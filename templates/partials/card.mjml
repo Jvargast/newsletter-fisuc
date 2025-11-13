@@ -1,0 +1,71 @@
+{% from "partials/placeholder.mjml" import imgBox %}
+
+{% if card.title or card.desc %}
+<mj-section background-color="#ffffff" padding="16px 24px">
+  <mj-column>
+    {% if card.title %}
+    <mj-text font-size="20px" color="{{ brand.text }}" font-weight="700" padding="0 0 8px 0">
+      {{ card.title }}
+    </mj-text>
+    {% endif %}
+
+    {% if card.desc %}
+    {% set raw = card.desc | replace('\r\n', '\n') %}
+    {% set paras = raw.split('\n\n') %}
+    {% for p in paras %}
+    <mj-text css-class="justify" padding="{{ '16px 0 0 0' if not loop.first else '0' }}" color="{{ brand.gray }}">
+      {{ p | replace('\n', '<br>') | safe }}
+    </mj-text>
+    {% endfor %}
+    {% endif %}
+  </mj-column>
+</mj-section>
+{% endif %}
+
+{# Imagen única #}
+{% if card.image and (not card.images or (card.images | length) == 0) %}
+<mj-section background-color="#ffffff" padding="0 24px 16px 24px">
+  <mj-column>
+    <mj-image padding="0" src="{{ card.image }}" alt="{{ card.alt or card.title or 'Imagen' }}" />
+  </mj-column>
+</mj-section>
+{% endif %}
+
+{% if card.images is defined and (card.images | length) > 0 %}
+{% set imgs = card.images | default([]) %}
+<mj-section background-color="#ffffff" padding="0 24px 8px 24px">
+  <mj-column width="50%" vertical-align="top">
+    {% if imgs | length > 0 and imgs[0] %}
+    <mj-image
+      css-class="two-up"
+      padding="0 8px 0 0"
+      src="{{ imgs[0] }}"
+      alt="{{ card.caption or 'Imagen 1' }}"
+      width="280px"
+    />
+    {% endif %}
+  </mj-column>
+
+  <mj-column width="50%" vertical-align="top">
+    {% if imgs | length > 1 and imgs[1] %}
+    <mj-image
+      css-class="two-up"
+      padding="0 0 0 8px"
+      src="{{ imgs[1] }}"
+      alt="{{ card.caption or 'Imagen 2' }}"
+      width="280px"
+    />
+    {% endif %}
+  </mj-column>
+</mj-section>
+
+{% if card.caption %}
+<mj-section background-color="#ffffff" padding="0 24px 16px 24px">
+  <mj-column>
+    <mj-text align="center" font-size="13px" color="{{ brand.gray }}" padding="8px 0 0 0">
+      <em>{{ card.caption }}</em>
+    </mj-text>
+  </mj-column>
+</mj-section>
+{% endif %}
+{% endif %}

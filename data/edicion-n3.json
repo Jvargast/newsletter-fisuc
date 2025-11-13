@@ -1,0 +1,45 @@
+{
+  "meta": {
+    "issue": "NEWSLETTER #3",
+    "date": "14 de noviembre 2025"
+  },
+  "brand": {
+    "name": "FISUC",
+    "logo": "https://via.placeholder.com/180x48?text=FISUC",
+    "primary": "#0176DE",
+    "bg": "#FFFFFF",
+    "text": "#111827",
+    "gray": "#54565A",
+    "dark": "#111827"
+  },
+  "unsubscribe": "%%unsubscribe_link%%",
+  "edition": {
+    "preview": "Crece nuestro portafolio y reconocimientos del ecosistema",
+    "heading": "Crece nuestro portafolio",
+    "subheading": "Damos la bienvenida a Rubisco Biotech, que se incorpora oficialmente al portafolio del FISUC tras concretarse la inversión durante octubre.",
+    "cta": {
+      "label": "Conocer Rubisco",
+      "url": "https://www.rubiscolab.com/?utm_source=newsletter&utm_medium=email&utm_campaign=n3"
+    },
+    "cards": [
+      {
+        "title": "Instancias de vinculación y encuentro",
+        "desc": "Texto…",
+        "image": ""
+      },
+      {
+        "title": "Reconocimientos",
+        "desc": "Texto…"
+      },
+      {
+        "title": "Startups FISUC en El Mercurio",
+        "desc": "Texto…",
+        "images": [],
+        "caption": "Startups del portafolio FISUC destacadas en Innovación El Mercurio"
+      }
+    ]
+  },
+  "legal": {
+    "copyright": "© 2025 FISUC - Todos los derechos reservados."
+  }
+}

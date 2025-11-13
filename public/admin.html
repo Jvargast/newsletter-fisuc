@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Editor Newsletter FISUC</title>
+    <link rel="stylesheet" href="/admin.css" />
+  </head>
+  <body>
+    <header>Editor de Newsletter — FISUC</header>
+    <aside>
+      <details class="panel" id="sec-edicion" open>
+        <summary class="panel-head">
+          <span class="section-title">Datos de edición</span>
+          <span class="chev" aria-hidden="true">▾</span>
+        </summary>
+
+        <div class="panel-body">
+          <div class="grid-2 edit-grid">
+            <div class="field">
+              <label>Número (solo dígito)</label>
+              <input id="issue" value="3" />
+              <small id="issue_hint">Se mostrará como “NEWSLETTER #3”.</small>
+            </div>
+            <div class="field">
+              <label>Fecha</label>
+              <input id="date" value="14 de noviembre 2025" />
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="panel" id="sec-marca" open>
+        <summary class="panel-head">
+          <span class="section-title">Marca</span>
+          <span class="chev" aria-hidden="true">▾</span>
+        </summary>
+
+        <div class="panel-body">
+          <div class="grid-2">
+            <div class="field">
+              <label>Nombre</label>
+              <input id="brand_name" value="FISUC" />
+            </div>
+
+            <div class="field">
+              <label>Logo URL</label>
+              <input
+                id="brand_logo"
+                value=""
+                placeholder="(se llenará al subir el logo)"
+              />
+              <small>Puedes pegar una URL pública o subir el archivo.</small>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Subir logo</label>
+
+            <div class="filepicker">
+              <input type="file" id="logo_file" accept="image/*" />
+              <button type="button" class="btn file-btn" data-for="logo_file">
+                Elegir archivo
+              </button>
+              <span class="file-name" id="logo_file_name"
+                >Ningún archivo seleccionado</span
+              >
+              <button type="button" id="upload_logo_btn" class="btn primary">
+                Subir
+              </button>
+            </div>
+
+            <div class="preview mt-8">
+              <img
+                id="logo_preview"
+                alt="Preview logo"
+                style="max-width: 180px; display: none"
+              />
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="field color-field">
+              <label>Color primario</label>
+              <div class="color-row">
+                <input type="color" id="brand_primary_picker" value="#0176DE" />
+                <input class="hex" id="brand_primary" value="#0176DE" />
+              </div>
+            </div>
+
+            <div class="field color-field">
+              <label>Fondo</label>
+              <div class="color-row">
+                <input type="color" id="brand_bg_picker" value="#FFFFFF" />
+                <input class="hex" id="brand_bg" value="#FFFFFF" />
+              </div>
+            </div>
+
+            <div class="field color-field">
+              <label>Titular</label>
+              <div class="color-row">
+                <input type="color" id="brand_text_picker" value="#111827" />
+                <input class="hex" id="brand_text" value="#111827" />
+              </div>
+              <small>Color para títulos y encabezados.</small>
+            </div>
+
+            <div class="field color-field">
+              <label>Cuerpo</label>
+              <div class="color-row">
+                <input type="color" id="brand_gray_picker" value="#54565A" />
+                <input class="hex" id="brand_gray" value="#54565A" />
+              </div>
+              <small>Color para párrafos y textos largos.</small>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Desuscripción (URL o tag de tu ESP)</label>
+            <input id="unsubscribe" value="%%unsubscribe_link%%" />
+          </div>
+        </div>
+      </details>
+
+      <details class="panel" id="sec-hero" open>
+        <summary class="panel-head">
+          <span class="section-title">Portada del boletín</span>
+          <span class="chev" aria-hidden="true">▾</span>
+        </summary>
+
+        <div class="panel-body">
+          <div class="field">
+            <label>Preview (snippet)</label>
+            <input
+              id="preview"
+              value="Crece nuestro portafolio y reconocimientos del ecosistema"
+            />
+            <small>Texto corto que verá el cliente junto al asunto.</small>
+          </div>
+          <div class="field">
+            <label>Imagen de portada</label>
+
+            <div class="filepicker">
+              <input type="file" id="hero_file" accept="image/*" />
+              <button type="button" class="btn file-btn" data-for="hero_file">
+                Elegir archivo
+              </button>
+              <span class="file-name" id="hero_file_name"
+                >Ningún archivo seleccionado</span
+              >
+              <button type="button" id="upload_hero_btn" class="btn">
+                Subir
+              </button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Título</label>
+            <input id="heading" value="Crece nuestro portafolio" />
+          </div>
+
+          <div class="field">
+            <label>Subtítulo</label>
+            <input
+              id="subheading"
+              value="Damos la bienvenida a Rubisco Biotech…"
+            />
+          </div>
+        </div>
+      </details>
+
+      <details class="panel" id="sec-cards" open>
+        <summary class="panel-head">
+          <span class="section-title">Contenido (cards)</span>
+          <span class="chev" aria-hidden="true">▾</span>
+        </summary>
+        <div class="panel-body">
+          <div class="field">
+            <label>JSON</label>
+            <textarea id="cards" rows="10">
+[
+  {"title":"Instancias de vinculación y encuentro","desc":"Texto…"},
+  {"title":"Reconocimientos","desc":"Texto…"},
+  {"title":"Startups FISUC en El Mercurio","desc":"Texto…","images":["",""],"caption":"Leyenda opcional"}
+]</textarea
+            >
+            <small
+              >Puedes usar: {"title","desc"} o {"image"} o
+              {"images":[img1,img2],"caption":""}.</small
+            >
+          </div>
+
+          <div class="field">
+            <label>Subir imagen a Card #</label>
+
+            <div class="cards-uploader">
+              <input id="card_index" type="number" min="0" value="0" />
+
+              <div class="filepicker compact">
+                <input type="file" id="card_file" accept="image/*" />
+                <button type="button" class="btn file-btn" data-for="card_file">
+                  Elegir archivo
+                </button>
+                <span class="file-name" id="card_file_name"
+                  >Ningún archivo seleccionado</span
+                >
+
+                <!-- NUEVO: selector de slot -->
+                <select id="card_slot" class="btn" style="height: 40px">
+                  <option value="auto">Auto</option>
+                  <option value="0">Imagen 1</option>
+                  <option value="1">Imagen 2</option>
+                </select>
+
+                <button type="button" id="upload_card_btn" class="btn">
+                  Subir
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <section class="panel-section actions">
+        <button id="btnPreview" class="btn primary">Previsualizar</button>
+        <button id="btnDownload" class="btn">Descargar HTML</button>
+        <button id="btnSend" class="btn">Enviar prueba</button>
+      </section>
+    </aside>
+
+    <main>
+      <div id="preview"><iframe id="frame"></iframe></div>
+    </main>
+
+    <script src="/admin.js" defer></script>
+  </body>
+</html>

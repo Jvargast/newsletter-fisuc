@@ -1,0 +1,7 @@
+<mj-section background-color="#1A73E8" padding="0">
+  <mj-column>
+    <mj-text color="#FFFFFF" padding="8px 28px" font-size="12px" font-weight="700">
+      {{ meta.issue }} · {{ meta.date }}
+    </mj-text>
+  </mj-column>
+</mj-section>

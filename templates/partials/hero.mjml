@@ -1,0 +1,11 @@
+{% from "partials/placeholder.mjml" import imgBox %}
+<mj-section padding="8px 24px 8px 24px" background-color="#ffffff">
+  <mj-column>
+    <mj-text font-size="24px" color="{{ brand.text }}" font-weight="700" padding="0 0 8px 0">
+      {{ edition.heading }}
+    </mj-text>
+    <mj-text css-class="justify" padding="0" color="{{ brand.gray }}">
+      {{ edition.subheading }}
+    </mj-text>
+  </mj-column>
+</mj-section>

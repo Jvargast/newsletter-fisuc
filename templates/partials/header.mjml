@@ -1,0 +1,26 @@
+{% from "partials/placeholder.mjml" import imgBox %}
+
+<mj-section background-color="#FFFFFF" padding="24px 24px 8px 24px">
+  <mj-column width="65%" vertical-align="middle">
+    {% if brand.logo %}
+    <mj-image src="{{ brand.logo }}" alt="{{ brand.name or 'Logo' }}" align="left" padding="0" width="220px" />
+    {% else %}
+    {{ imgBox('Logo no disponible', '80px') }}
+    {% endif %}
+  </mj-column>
+
+  <mj-column width="35%" vertical-align="middle">
+    <mj-text align="right" padding="0" font-size="20px" color="{{ brand.primary }}" font-weight="700">
+      <span style="text-transform:uppercase;">NEWSLETTER #{{ meta.issue | replace('NEWSLETTER #','') }}</span>
+    </mj-text>
+    <mj-text align="right" padding="4px 0 0 0" font-size="14px" color="{{ brand.primary }}">
+      <span style="text-transform:uppercase;">{{ meta.date }}</span>
+    </mj-text>
+  </mj-column>
+</mj-section>
+
+<mj-section background-color="#FFFFFF" padding="0 24px 16px 24px">
+  <mj-column>
+    <mj-divider border-color="#E5E7EB" border-width="1px" />
+  </mj-column>
+</mj-section>

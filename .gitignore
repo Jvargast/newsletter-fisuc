@@ -1,0 +1,16 @@
+node_modules/
+npm-debug.log*
+yarn.lock
+pnpm-locl.yaml
+
+.DS_Store
+dist/
+.out/
+.tmp/
+
+.env
+.env.*.local
+public/uploads
+
+coverage/
+EOF

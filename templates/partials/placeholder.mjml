@@ -1,0 +1,23 @@
+{% macro imgBox(label='Imagen no disponible', height='160px', width='600px') -%}
+{# Alto numérico para el SVG #}
+{% set h = height | replace('px','') %}
+{% set w = width | replace('px','') %}
+{% set svg %}
+<svg xmlns='http://www.w3.org/2000/svg' width='{{w}}' height='{{h}}' viewBox='0 0 {{w}} {{h}}'>
+  <rect width='100%' height='100%' fill='#F3F4F6' />
+  <path d='M0 {{h}} L {{w*0.35}} {{h*0.55}} L {{w*0.55}} {{h*0.8}} L {{w}} {{h*0.2}} L {{w}} {{h}} Z' fill='#E5E7EB' />
+  <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='16' fill='#9CA3AF'>
+    {{ label }}
+  </text>
+</svg>
+{% endset %}
+<mj-image alt="{{ label }}" padding="0" width="{{ width }}" src="data:image/svg+xml;utf8,{{ svg
+      | replace('\n','')
+      | replace('#','%23')
+      | replace('  ',' ')
+    }}" />
+{%- endmacro %}
+
+{% macro logoBox(label='Logo no disponible', height='80px') -%}
+{{ imgBox(label, height, '180px') }}
+{%- endmacro %}

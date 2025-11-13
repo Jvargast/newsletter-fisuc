@@ -1,0 +1,41 @@
+<mjml>
+  <mj-head>
+    <mj-font name="Roboto" href="https://fonts.googleapis.com/css?family=Roboto:400,700" />
+    <mj-attributes>
+      <mj-all font-family="Roboto, Arial, Helvetica, sans-serif" />
+      <mj-text font-size="14px" color="{{ brand.gray }}" line-height="1.6" />
+      <mj-button font-size="14px" padding="12px 18px" border-radius="6px" />
+    </mj-attributes>
+
+
+    <mj-style inline="inline">
+      .justify div,
+      .justify p {
+        text-align: justify !important;
+      }
+
+      a {
+        text-decoration: none;
+      }
+
+      .two-up img {
+        display: block;
+        width: 100% !important;
+        height: auto !important;
+        object-fit: contain !important;
+      }
+    </mj-style>
+
+    <mj-preview>{{ edition.preview | default('Novedades FISUC') }}</mj-preview>
+  </mj-head>
+
+
+  <mj-body background-color="{{ brand.bg }}">
+    {% include "partials/header.mjml" %}
+    {% include "partials/hero.mjml" %}
+    {% for card in (edition.cards or []) %}
+    {% include "partials/card.mjml" %}
+    {% endfor %}
+    {% include "partials/footer.mjml" %}
+  </mj-body>
+</mjml>
