@@ -14,3 +14,6 @@ public/uploads
 
 coverage/
 EOF
+
+bin/node-macos-arm64
+bin/node.exe
