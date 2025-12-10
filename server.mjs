@@ -35,6 +35,7 @@ function cidify(html) {
 
 dotenv.config();
 
+const fsp = fs.promises;
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
@@ -44,6 +45,43 @@ app.use(express.static(path.join(ROOT, "public")));
 
 const UPLOAD_DIR = path.join(ROOT, "public", "uploads");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+app.get("/api/media", async (req, res) => {
+  try {
+    const entries = await fsp.readdir(UPLOAD_DIR, { withFileTypes: true });
+    const base = `${req.protocol}://${req.get("host")}`;
+
+    const images = entries
+      .filter((e) => e.isFile())
+      .filter((e) => /\.(png|jpe?g|gif|webp|svg)$/i.test(e.name))
+      .map((e) => ({
+        name: e.name,
+        url: `${base}/uploads/${e.name}`,
+      }));
+
+    res.json({ ok: true, items: images });
+  } catch (err) {
+    console.error("Error listando media:", err);
+    res.status(500).json({ ok: false, error: "No se pudo listar media" });
+  }
+});
+
+app.delete("/api/media/:file", async (req, res) => {
+  try {
+    const fileName = path.basename(req.params.file);
+    const filePath = path.join(UPLOAD_DIR, fileName);
+
+    if (!filePath.startsWith(UPLOAD_DIR)) {
+      return res.status(400).json({ ok: false, error: "Ruta inválida" });
+    }
+
+    await fsp.unlink(filePath);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Error borrando archivo:", err);
+    res.status(500).json({ ok: false, error: "No se pudo borrar el archivo" });
+  }
+});
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
@@ -107,7 +145,7 @@ app.post("/api/send-test", async (req, res) => {
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port,
-      secure: port === 465, 
+      secure: port === 465,
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
     });
 

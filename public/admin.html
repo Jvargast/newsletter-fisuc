@@ -77,6 +77,11 @@
                 style="max-width: 180px; display: none"
               />
             </div>
+            <div class="field">
+              <button type="button" class="btn" id="choose_logo_existing">
+                Elegir desde servidor
+              </button>
+            </div>
           </div>
 
           <div class="grid-2">
@@ -130,28 +135,12 @@
 
         <div class="panel-body">
           <div class="field">
-            <label>Preview (snippet)</label>
+            <label>Asunto correo (Preview):</label>
             <input
               id="preview"
               value="Crece nuestro portafolio y reconocimientos del ecosistema"
             />
             <small>Texto corto que verá el cliente junto al asunto.</small>
-          </div>
-          <div class="field">
-            <label>Imagen de portada</label>
-
-            <div class="filepicker">
-              <input type="file" id="hero_file" accept="image/*" />
-              <button type="button" class="btn file-btn" data-for="hero_file">
-                Elegir archivo
-              </button>
-              <span class="file-name" id="hero_file_name"
-                >Ningún archivo seleccionado</span
-              >
-              <button type="button" id="upload_hero_btn" class="btn">
-                Subir
-              </button>
-            </div>
           </div>
 
           <div class="field">
@@ -218,6 +207,12 @@
               </div>
             </div>
           </div>
+          <div class="field">
+            <button type="button" class="btn" id="choose_card_existing">
+              Elegir imagen desde servidor
+            </button>
+            <small>Usará el índice de Card y slot seleccionados.</small>
+          </div>
         </div>
       </details>
 
@@ -232,6 +227,31 @@
       <div id="preview"><iframe id="frame"></iframe></div>
     </main>
 
+    <div id="media-modal" class="media-modal hidden">
+      <div class="media-backdrop"></div>
+      <div class="media-dialog">
+        <header class="media-header">
+          <h2>Biblioteca de imágenes</h2>
+          <button type="button" class="btn ghost" id="media_close">
+            &times;
+          </button>
+        </header>
+
+        <div class="media-body">
+          <div id="media_grid" class="media-grid"></div>
+          <div id="media_empty" class="media-empty" style="display: none">
+            Aún no hay imágenes subidas.
+          </div>
+        </div>
+
+        <footer class="media-footer">
+          <small>
+            Haz clic en una imagen para seleccionarla. Usa el icono 🗑 para
+            eliminar.
+          </small>
+        </footer>
+      </div>
+    </div>
     <script src="/admin.js" defer></script>
   </body>
 </html>

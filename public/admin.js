@@ -67,7 +67,6 @@ async function buildPayload() {
       heading: v("heading"),
       subheading: v("subheading"),
       cta,
-      heroImage: document.getElementById("hero_image_hidden")?.value || null,
       cards,
     },
     legal: { copyright: "© 2025 FISUC - Todos los derechos reservados." },
@@ -130,7 +129,7 @@ async function uploadImage(file) {
 
   const ct = r.headers.get("content-type") || "";
   if (!ct.includes("application/json")) {
-    const text = await r.text();
+    await r.text(); // descartamos
     throw new Error("Respuesta no válida del servidor al subir la imagen");
   }
 
@@ -139,6 +138,117 @@ async function uploadImage(file) {
     throw new Error(out.error || "Error al subir la imagen");
   }
   return out.url;
+}
+
+const mediaState = {
+  items: [],
+  loaded: false,
+  loading: false,
+  onSelect: null,
+};
+
+async function loadMedia() {
+  if (mediaState.loading) return;
+  mediaState.loading = true;
+  try {
+    const res = await fetch("/api/media");
+    if (!res.ok) throw new Error("No se pudo cargar imágenes");
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "Error en /api/media");
+    mediaState.items = data.items || [];
+    mediaState.loaded = true;
+  } finally {
+    mediaState.loading = false;
+  }
+}
+
+function renderMediaGrid() {
+  const grid = document.getElementById("media_grid");
+  const empty = document.getElementById("media_empty");
+  if (!grid || !empty) return;
+
+  grid.innerHTML = "";
+  empty.style.display = "none";
+
+  if (!mediaState.items.length) {
+    empty.style.display = "block";
+    empty.textContent = "Aún no hay imágenes subidas.";
+    return;
+  }
+
+  mediaState.items.forEach((item) => {
+    const div = document.createElement("div");
+    div.className = "media-item";
+
+    const img = document.createElement("img");
+    img.src = item.url;
+    img.alt = item.name;
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "media-delete";
+    delBtn.innerText = "🗑";
+
+    delBtn.addEventListener("click", async (ev) => {
+      ev.stopPropagation();
+      if (!confirm(`¿Eliminar ${item.name}?`)) return;
+      try {
+        const resp = await fetch(
+          `/api/media/${encodeURIComponent(item.name)}`,
+          { method: "DELETE" }
+        );
+        if (!resp.ok) throw new Error("Error HTTP");
+        const out = await resp.json();
+        if (!out.ok) throw new Error(out.error || "Error al borrar");
+        mediaState.items = mediaState.items.filter((i) => i.name !== item.name);
+        renderMediaGrid();
+      } catch (err) {
+        console.error(err);
+        alert("No se pudo eliminar el archivo.");
+      }
+    });
+
+    div.addEventListener("click", () => {
+      if (mediaState.onSelect) mediaState.onSelect(item);
+      closeMediaModal();
+    });
+
+    div.appendChild(img);
+    div.appendChild(delBtn);
+    grid.appendChild(div);
+  });
+}
+
+function openMediaModal(onSelect) {
+  mediaState.onSelect = onSelect;
+  const modal = document.getElementById("media-modal");
+  if (!modal) {
+    alert("No existe el modal de media (#media-modal) en el HTML.");
+    return;
+  }
+  modal.classList.remove("hidden");
+
+  if (!mediaState.loaded) {
+    loadMedia()
+      .then(() => {
+        renderMediaGrid();
+      })
+      .catch((err) => {
+        console.error(err);
+        const empty = document.getElementById("media_empty");
+        if (empty) {
+          empty.style.display = "block";
+          empty.textContent = "Error cargando imágenes.";
+        }
+      });
+  } else {
+    renderMediaGrid();
+  }
+}
+
+function closeMediaModal() {
+  const modal = document.getElementById("media-modal");
+  if (modal) modal.classList.add("hidden");
+  mediaState.onSelect = null;
 }
 
 async function onUploadLogo() {
@@ -164,22 +274,6 @@ async function onUploadLogo() {
 
   preview();
   alert("Logo subido ✔");
-}
-
-async function onUploadHero() {
-  const f = document.getElementById("hero_file").files[0];
-  if (!f) return alert("Elige un archivo");
-  const url = await uploadImage(f);
-  const el = document.getElementById("hero_image_hidden");
-  if (el) el.value = url;
-  else {
-    const i = document.createElement("input");
-    i.type = "hidden";
-    i.id = "hero_image_hidden";
-    i.value = url;
-    document.body.appendChild(i);
-  }
-  alert("Hero subido ✔\nURL asignada a edition.heroImage");
 }
 
 async function onUploadCard() {
@@ -225,6 +319,7 @@ function init() {
   bindColorPair("brand_bg_picker", "brand_bg", rePreview);
   bindColorPair("brand_text_picker", "brand_text", rePreview);
   bindColorPair("brand_gray_picker", "brand_gray", rePreview);
+
   const btnPrev = document.getElementById("btnPreview");
   const btnDown = document.getElementById("btnDownload");
   const btnSend = document.getElementById("btnSend");
@@ -233,10 +328,8 @@ function init() {
   if (btnSend) btnSend.onclick = sendTest;
 
   const ul = document.getElementById("upload_logo_btn");
-  const uh = document.getElementById("upload_hero_btn");
   const uc = document.getElementById("upload_card_btn");
   if (ul) ul.onclick = onUploadLogo;
-  if (uh) uh.onclick = onUploadHero;
   if (uc) uc.onclick = onUploadCard;
 
   const issueInput = document.getElementById("issue");
@@ -252,6 +345,74 @@ function init() {
     issueInput.addEventListener("input", syncIssueHint);
     syncIssueHint();
   }
+
+  const chooseLogoExisting = document.getElementById("choose_logo_existing");
+  if (chooseLogoExisting) {
+    chooseLogoExisting.onclick = () => {
+      openMediaModal((item) => {
+        const logoInput = document.getElementById("brand_logo");
+        const previewImg = document.getElementById("logo_preview");
+        if (logoInput) logoInput.value = item.url;
+        if (previewImg) {
+          previewImg.src = item.url;
+          previewImg.style.display = "block";
+        }
+        preview();
+      });
+    };
+  }
+
+  const chooseCardExisting = document.getElementById("choose_card_existing");
+  if (chooseCardExisting) {
+    chooseCardExisting.onclick = () => {
+      openMediaModal((item) => {
+        const idxInput = document.getElementById("card_index");
+        const slotSelect = document.getElementById("card_slot");
+        const textarea = document.getElementById("cards");
+
+        let cards;
+        try {
+          cards = JSON.parse(textarea.value || "[]");
+        } catch (e) {
+          alert("JSON de cards inválido.");
+          return;
+        }
+
+        const idx = parseInt(idxInput.value || "0", 10);
+        if (!cards[idx]) {
+          alert(`No existe Card #${idx}`);
+          return;
+        }
+
+        const card = cards[idx];
+        const slot = slotSelect ? slotSelect.value : "auto";
+
+        if (slot === "auto") {
+          if (Array.isArray(card.images) && card.images.length) {
+            let pos = card.images.findIndex((x) => !x);
+            if (pos === -1) pos = card.images.length - 1;
+            card.images[pos] = item.url;
+          } else {
+            card.image = item.url;
+          }
+        } else {
+          const s = parseInt(slot, 10);
+          card.images = card.images || [];
+          card.images[s] = item.url;
+        }
+
+        textarea.value = JSON.stringify(cards, null, 2);
+        alert("Imagen asignada desde biblioteca ✔");
+        preview();
+      });
+    };
+  }
+
+  const mediaClose = document.getElementById("media_close");
+  if (mediaClose) mediaClose.addEventListener("click", closeMediaModal);
+
+  const mediaBackdrop = document.querySelector("#media-modal .media-backdrop");
+  if (mediaBackdrop) mediaBackdrop.addEventListener("click", closeMediaModal);
 }
 
 if (document.readyState === "loading") {
@@ -280,7 +441,6 @@ document.addEventListener("click", (e) => {
 
 [
   ["logo_file", "logo_file_name"],
-  ["hero_file", "hero_file_name"],
   ["card_file", "card_file_name"],
 ].forEach(([fileId, nameId]) => {
   const input = document.getElementById(fileId);

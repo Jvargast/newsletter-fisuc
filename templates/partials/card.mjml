@@ -36,25 +36,13 @@
 <mj-section background-color="#ffffff" padding="0 24px 8px 24px">
   <mj-column width="50%" vertical-align="top">
     {% if imgs | length > 0 and imgs[0] %}
-    <mj-image
-      css-class="two-up"
-      padding="0 8px 0 0"
-      src="{{ imgs[0] }}"
-      alt="{{ card.caption or 'Imagen 1' }}"
-      width="280px"
-    />
+    <mj-image css-class="two-up" padding="0 8px 0 0" src="{{ imgs[0] }}" alt="{{ card.caption or 'Imagen 1' }}" width="280px" />
     {% endif %}
   </mj-column>
 
   <mj-column width="50%" vertical-align="top">
     {% if imgs | length > 1 and imgs[1] %}
-    <mj-image
-      css-class="two-up"
-      padding="0 0 0 8px"
-      src="{{ imgs[1] }}"
-      alt="{{ card.caption or 'Imagen 2' }}"
-      width="280px"
-    />
+    <mj-image css-class="two-up" padding="0 0 0 8px" src="{{ imgs[1] }}" alt="{{ card.caption or 'Imagen 2' }}" width="280px" />
     {% endif %}
   </mj-column>
 </mj-section>
