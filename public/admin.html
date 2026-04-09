@@ -5,34 +5,65 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Editor Newsletter FISUC</title>
     <link rel="stylesheet" href="/admin.css" />
+    <link rel="stylesheet" href="/send-feedback.css" />
   </head>
   <body>
-    <header>Editor de Newsletter — FISUC</header>
+    <header class="app-header">
+      <div class="app-header__copy">
+        <p class="eyebrow">FISUC / Constructor HTML</p>
+        <h1>Editor visual de newsletter</h1>
+      </div>
+    </header>
+
     <aside>
+      <div class="aside-tools">
+        <button type="button" class="btn sample-btn" id="load_sample_btn">
+          Usar ejemplo base
+        </button>
+      </div>
+
       <details class="panel" id="sec-edicion" open>
         <summary class="panel-head">
-          <span class="section-title">Datos de edición</span>
+          <span class="section-title">Edición y correo</span>
           <span class="chev" aria-hidden="true">▾</span>
         </summary>
 
         <div class="panel-body">
           <div class="grid-2 edit-grid">
             <div class="field">
-              <label>Número (solo dígito)</label>
-              <input id="issue" value="3" />
-              <small id="issue_hint">Se mostrará como “NEWSLETTER #3”.</small>
+              <label>Número</label>
+              <input id="issue" value="4" />
             </div>
+
             <div class="field">
               <label>Fecha</label>
-              <input id="date" value="14 de noviembre 2025" />
+              <input id="date" type="date" value="2026-04-12" />
             </div>
+          </div>
+
+          <div class="field">
+            <label>Asunto del correo</label>
+            <input
+              id="subject"
+              value="Avances de nuestro portafolio"
+              placeholder="Lo que verá el destinatario en su bandeja"
+            />
+          </div>
+
+          <div class="field">
+            <label>Preheader</label>
+            <input
+              id="preheader"
+              value="Avances de nuestro portafolio"
+              placeholder="Texto corto que acompaña al asunto"
+            />
           </div>
         </div>
       </details>
 
       <details class="panel" id="sec-marca" open>
         <summary class="panel-head">
-          <span class="section-title">Marca</span>
+          <span class="section-title">Marca y estilos</span>
           <span class="chev" aria-hidden="true">▾</span>
         </summary>
 
@@ -48,38 +79,63 @@
               <input
                 id="brand_logo"
                 value=""
-                placeholder="(se llenará al subir el logo)"
+                placeholder="URL o usa la biblioteca"
               />
-              <small>Puedes pegar una URL pública o subir el archivo.</small>
             </div>
           </div>
 
-          <div class="field">
-            <label>Subir logo</label>
-
-            <div class="filepicker">
-              <input type="file" id="logo_file" accept="image/*" />
-              <button type="button" class="btn file-btn" data-for="logo_file">
-                Elegir archivo
-              </button>
-              <span class="file-name" id="logo_file_name"
-                >Ningún archivo seleccionado</span
-              >
-              <button type="button" id="upload_logo_btn" class="btn primary">
-                Subir
-              </button>
-            </div>
-
-            <div class="preview mt-8">
+          <div class="asset-strip">
+            <div class="preview-card">
+              <div class="preview-card__label">Logo</div>
               <img
                 id="logo_preview"
                 alt="Preview logo"
-                style="max-width: 180px; display: none"
+                style="display: none"
               />
+              <div id="logo_placeholder" class="asset-placeholder">
+                Sin logo asignado
+              </div>
             </div>
-            <div class="field">
-              <button type="button" class="btn" id="choose_logo_existing">
-                Elegir desde servidor
+
+            <div class="asset-actions">
+              <button
+                type="button"
+                class="btn logo-action-btn image-action-btn image-action-btn--upload"
+                id="upload_logo_btn"
+                title="Subir logo"
+                aria-label="Subir logo"
+              >
+                <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+                  <path d="M10 12V4.5" />
+                  <path d="M6.75 7.75 10 4.5l3.25 3.25" />
+                  <path d="M4 12.5v1.75A1.75 1.75 0 0 0 5.75 16h8.5A1.75 1.75 0 0 0 16 14.25V12.5" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="btn logo-action-btn image-action-btn image-action-btn--library"
+                id="choose_logo_existing"
+                title="Elegir logo"
+                aria-label="Elegir logo"
+              >
+                <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+                  <rect x="3" y="4" width="14" height="12" rx="2" />
+                  <path d="m6.5 12 2.25-2.5L12 13l1.5-1.75L16 14" />
+                  <circle cx="7" cy="7.25" r="1" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="btn logo-action-btn image-action-btn image-action-btn--clear"
+                id="clear_logo_btn"
+                title="Quitar logo"
+                aria-label="Quitar logo"
+              >
+                <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+                  <path d="m6 6 8 8" />
+                  <path d="m14 6-8 8" />
+                  <circle cx="10" cy="10" r="7" />
+                </svg>
               </button>
             </div>
           </div>
@@ -102,12 +158,11 @@
             </div>
 
             <div class="field color-field">
-              <label>Titular</label>
+              <label>Titulares</label>
               <div class="color-row">
                 <input type="color" id="brand_text_picker" value="#111827" />
                 <input class="hex" id="brand_text" value="#111827" />
               </div>
-              <small>Color para títulos y encabezados.</small>
             </div>
 
             <div class="field color-field">
@@ -116,13 +171,7 @@
                 <input type="color" id="brand_gray_picker" value="#54565A" />
                 <input class="hex" id="brand_gray" value="#54565A" />
               </div>
-              <small>Color para párrafos y textos largos.</small>
             </div>
-          </div>
-
-          <div class="field">
-            <label>Desuscripción (URL o tag de tu ESP)</label>
-            <input id="unsubscribe" value="%%unsubscribe_link%%" />
           </div>
         </div>
       </details>
@@ -135,96 +184,205 @@
 
         <div class="panel-body">
           <div class="field">
-            <label>Asunto correo (Preview):</label>
-            <input
-              id="preview"
-              value="Crece nuestro portafolio y reconocimientos del ecosistema"
-            />
-            <small>Texto corto que verá el cliente junto al asunto.</small>
+            <label>Título principal</label>
+            <input id="heading" value="Avances de nuestro portafolio" />
           </div>
 
           <div class="field">
-            <label>Título</label>
-            <input id="heading" value="Crece nuestro portafolio" />
-          </div>
-
-          <div class="field">
-            <label>Subtítulo</label>
-            <input
-              id="subheading"
-              value="Damos la bienvenida a Rubisco Biotech…"
-            />
+            <label>Bajada / introducción</label>
+            <textarea id="subheading" rows="5">Durante este período, las startups del portafolio de FISUC continúan avanzando en sus procesos de validación comercial y escalamiento, a través de alianzas estratégicas, levantamiento de capital e integración con actores relevantes a nivel global.</textarea>
           </div>
         </div>
       </details>
 
       <details class="panel" id="sec-cards" open>
         <summary class="panel-head">
-          <span class="section-title">Contenido (cards)</span>
+          <span class="section-title">Bloques de contenido</span>
           <span class="chev" aria-hidden="true">▾</span>
         </summary>
+
         <div class="panel-body">
-          <div class="field">
-            <label>JSON</label>
-            <textarea id="cards" rows="10">
-[
-  {"title":"Instancias de vinculación y encuentro","desc":"Texto…"},
-  {"title":"Reconocimientos","desc":"Texto…"},
-  {"title":"Startups FISUC en El Mercurio","desc":"Texto…","images":["",""],"caption":"Leyenda opcional"}
-]</textarea
-            >
-            <small
-              >Puedes usar: {"title","desc"} o {"image"} o
-              {"images":[img1,img2],"caption":""}.</small
-            >
-          </div>
-
-          <div class="field">
-            <label>Subir imagen a Card #</label>
-
-            <div class="cards-uploader">
-              <input id="card_index" type="number" min="0" value="0" />
-
-              <div class="filepicker compact">
-                <input type="file" id="card_file" accept="image/*" />
-                <button type="button" class="btn file-btn" data-for="card_file">
-                  Elegir archivo
-                </button>
-                <span class="file-name" id="card_file_name"
-                  >Ningún archivo seleccionado</span
-                >
-
-                <!-- NUEVO: selector de slot -->
-                <select id="card_slot" class="btn" style="height: 40px">
-                  <option value="auto">Auto</option>
-                  <option value="0">Imagen 1</option>
-                  <option value="1">Imagen 2</option>
-                </select>
-
-                <button type="button" id="upload_card_btn" class="btn">
-                  Subir
-                </button>
-              </div>
-            </div>
-          </div>
-          <div class="field">
-            <button type="button" class="btn" id="choose_card_existing">
-              Elegir imagen desde servidor
+          <div class="blocks-toolbar">
+            <button type="button" class="btn block-add-btn" id="add_story_btn">
+              <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+                <path d="M5 4.5h10" />
+                <path d="M5 8h10" />
+                <path d="M5 11.5h6.5" />
+                <path d="M5 15h8.5" />
+              </svg>
+              <span>Noticia</span>
             </button>
-            <small>Usará el índice de Card y slot seleccionados.</small>
+            <button type="button" class="btn block-add-btn" id="add_gallery_btn">
+              <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+                <rect x="3" y="4" width="14" height="12" rx="2" />
+                <path d="m6.5 12 2.25-2.5L12 13l1.5-1.75L16 14" />
+                <circle cx="7" cy="7.25" r="1" />
+              </svg>
+              <span>Galería</span>
+            </button>
+            <button type="button" class="btn block-add-btn" id="add_note_btn">
+              <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+                <path d="M5 4.5h10" />
+                <path d="M5 8h10" />
+                <path d="M5 11.5h10" />
+                <path d="M5 15h7" />
+              </svg>
+              <span>Texto</span>
+            </button>
           </div>
+
+          <div id="blocks_empty" class="blocks-empty">
+            No hay bloques todavía. Empieza agregando una noticia o una galería.
+          </div>
+
+          <div id="blocks_list" class="blocks-list"></div>
+
+          <details class="advanced-panel">
+            <summary>Modo avanzado / JSON técnico</summary>
+            <p class="advanced-copy">
+              Si lo necesitas, puedes copiar o pegar la estructura de bloques en
+              JSON. El editor visual sigue siendo la fuente principal.
+            </p>
+
+            <textarea id="cards_json" rows="12"></textarea>
+
+            <div class="advanced-actions">
+              <button type="button" class="btn" id="apply_json_btn">
+                Aplicar JSON
+              </button>
+              <button type="button" class="btn" id="copy_json_btn">
+                Copiar JSON
+              </button>
+            </div>
+          </details>
         </div>
       </details>
 
-      <section class="panel-section actions">
-        <button id="btnPreview" class="btn primary">Previsualizar</button>
-        <button id="btnDownload" class="btn">Descargar HTML</button>
-        <button id="btnSend" class="btn">Enviar prueba</button>
-      </section>
+      <details class="panel" id="sec-footer" open>
+        <summary class="panel-head">
+          <span class="section-title">Footer y envío</span>
+          <span class="chev" aria-hidden="true">▾</span>
+        </summary>
+
+        <div class="panel-body">
+          <div class="field">
+            <label>Link de desuscripción</label>
+            <input id="unsubscribe" value="%%unsubscribe_link%%" />
+          </div>
+
+          <div class="field">
+            <label>Texto legal</label>
+            <input
+              id="copyright"
+              value="© 2026 FISUC - Todos los derechos reservados."
+            />
+          </div>
+
+          <div class="field">
+            <label>Correo destino para prueba</label>
+            <input
+              id="test_to"
+              value=""
+              placeholder="correo@dominio.com"
+            />
+          </div>
+        </div>
+      </details>
     </aside>
 
     <main>
-      <div id="preview"><iframe id="frame"></iframe></div>
+      <section class="preview-toolbar">
+        <div>
+          <p class="eyebrow">Vista de correo</p>
+          <h2>Preview del correo</h2>
+        </div>
+
+        <div class="preview-toolbar__actions">
+          <div class="view-toggle" id="view_toggle" data-active-view="desktop" role="group" aria-label="Tipo de vista">
+            <span class="view-toggle__thumb" aria-hidden="true"></span>
+            <button
+              type="button"
+              class="btn is-active view-toggle__btn"
+              data-view="desktop"
+              title="Vista escritorio"
+              aria-label="Vista escritorio"
+              aria-pressed="true"
+            >
+              <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+                <rect x="3" y="4" width="14" height="9" rx="1.8" />
+                <path d="M8 16h4" />
+                <path d="M10 13v3" />
+              </svg>
+              <span class="sr-only">Vista escritorio</span>
+            </button>
+            <button
+              type="button"
+              class="btn view-toggle__btn"
+              data-view="mobile"
+              title="Vista móvil"
+              aria-label="Vista móvil"
+              aria-pressed="false"
+            >
+              <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+                <rect x="6.25" y="2.75" width="7.5" height="14.5" rx="2" />
+                <path d="M8.75 5h2.5" />
+                <circle cx="10" cy="14.25" r="0.7" fill="currentColor" stroke="none" />
+              </svg>
+              <span class="sr-only">Vista móvil</span>
+            </button>
+          </div>
+
+          <button id="btnPreview" class="btn primary">Actualizar</button>
+          <button id="btnDownload" class="btn">Descargar HTML</button>
+          <button id="btnSend" class="btn send-action-btn" data-idle-label="Enviar prueba">
+            Enviar prueba
+          </button>
+        </div>
+      </section>
+
+      <section class="preview-summary">
+        <div class="summary-chip">
+          <span>Asunto</span>
+          <strong id="summary_subject">Avances de nuestro portafolio</strong>
+        </div>
+
+        <div class="summary-chip">
+          <span>Preheader</span>
+          <strong id="summary_preheader">Avances de nuestro portafolio</strong>
+        </div>
+
+        <div class="summary-chip summary-chip--status">
+          <span>Estado</span>
+          <strong id="preview_status">Esperando cambios</strong>
+        </div>
+      </section>
+
+      <section class="preview-stage">
+        <div class="mail-shell desktop" id="mail_shell">
+          <div class="mail-shell__bar">
+            <div class="mail-dots">
+              <span class="mail-dot"></span>
+              <span class="mail-dot"></span>
+              <span class="mail-dot"></span>
+            </div>
+            <span class="mail-shell__label">newsletter.html</span>
+            <span class="mail-shell__stamp" id="preview_timestamp">
+              Aún sin actualizar
+            </span>
+          </div>
+
+          <iframe id="frame" title="Vista previa del newsletter"></iframe>
+        </div>
+      </section>
+
+      <details class="plain-panel">
+        <summary>Versión texto generada</summary>
+        <textarea
+          id="plain_text_output"
+          readonly
+          placeholder="La versión texto aparecerá aquí cuando compiles."
+        ></textarea>
+      </details>
     </main>
 
     <div id="media-modal" class="media-modal hidden">
@@ -246,12 +404,159 @@
 
         <footer class="media-footer">
           <small>
-            Haz clic en una imagen para seleccionarla. Usa el icono 🗑 para
-            eliminar.
+            Haz clic en una imagen para seleccionarla o usa el icono para
+            eliminarla.
           </small>
         </footer>
       </div>
     </div>
+
+    <div id="confirm-modal" class="confirm-modal hidden" aria-hidden="true">
+      <div class="media-backdrop"></div>
+      <div class="confirm-dialog">
+        <header class="confirm-dialog__header">
+          <div>
+            <p class="eyebrow">Confirmación</p>
+            <h2 id="confirm_title">Eliminar imagen</h2>
+          </div>
+          <button type="button" class="btn ghost" id="confirm_close">
+            &times;
+          </button>
+        </header>
+
+        <div class="confirm-dialog__body">
+          <p id="confirm_description" class="confirm-dialog__copy"></p>
+          <ul id="confirm_items" class="confirm-dialog__list hidden"></ul>
+        </div>
+
+        <footer class="confirm-dialog__footer">
+          <button type="button" class="btn" id="confirm_cancel">
+            Cancelar
+          </button>
+          <button type="button" class="btn danger" id="confirm_accept">
+            Confirmar
+          </button>
+        </footer>
+      </div>
+    </div>
+
+    <div id="image-editor-modal" class="editor-modal hidden">
+      <div class="media-backdrop"></div>
+      <div class="editor-dialog">
+        <header class="editor-header">
+          <div>
+            <p class="eyebrow">Editor de imagen</p>
+            <h2>Recorta y ajusta el encuadre</h2>
+          </div>
+          <button type="button" class="btn ghost" id="image_editor_close">
+            &times;
+          </button>
+        </header>
+
+        <div class="editor-body">
+          <section class="editor-stage-wrap">
+            <div class="editor-stage">
+              <canvas id="image_editor_canvas"></canvas>
+            </div>
+            <p class="editor-hint">
+              Arrastra la imagen para reencuadrarla y usa el zoom para ajustar
+              el recorte final.
+            </p>
+          </section>
+
+          <aside class="editor-controls">
+            <div class="field">
+              <label>Imagen actual</label>
+              <div class="editor-source" id="image_editor_source">
+                Esperando imagen
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div class="field">
+                <label>Ancho final</label>
+                <input
+                  id="image_editor_width"
+                  type="number"
+                  min="120"
+                  max="2400"
+                  step="10"
+                  value="1200"
+                />
+              </div>
+
+              <div class="field">
+                <label>Alto final</label>
+                <input
+                  id="image_editor_height"
+                  type="number"
+                  min="120"
+                  max="2400"
+                  step="10"
+                  value="675"
+                />
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Zoom</label>
+              <input
+                id="image_editor_zoom"
+                type="range"
+                min="1"
+                max="4"
+                step="0.01"
+                value="1"
+              />
+              <small id="image_editor_zoom_label">100%</small>
+            </div>
+
+            <div class="editor-actions">
+              <button type="button" class="btn" id="image_editor_reset">
+                Resetear
+              </button>
+              <button type="button" class="btn primary" id="image_editor_apply">
+                Aplicar recorte
+              </button>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+
+    <input type="file" id="asset_upload_input" accept="image/*" hidden />
+
+    <script id="initial-cards" type="application/json">
+      [
+        {
+          "type": "story",
+          "title": "Rubisco Biotechnology avanza en su escalamiento junto a Terraflos",
+          "source": "Diario Financiero (DF LAB)",
+          "desc": "Rubisco Biotechnology, parte del portafolio de FISUC, cerró una ronda de financiamiento por US$2 millones, de los cuales Terraflos aportó US$1,5 millones.\n\nLa operación contempla, además, un proceso de adquisición progresiva de la compañía por parte de Terraflos y refuerza la expansión internacional de la startup.",
+          "image": ""
+        },
+        {
+          "type": "story",
+          "title": "Bluetek Global concreta inversión estratégica con AbastibleTec",
+          "source": "Diario Financiero (DF LAB)",
+          "desc": "Bluetek Global anunció la incorporación de AbastibleTec como inversionista estratégico, con un aporte de US$500 mil para impulsar su escalamiento.\n\nEl acuerdo contempla nuevos proyectos, expansión comercial y fortalecimiento de capacidades para acelerar su despliegue en distintos mercados."
+        },
+        {
+          "type": "gallery",
+          "title": "Startups FISUC destacadas en el ecosistema",
+          "source": "Cobertura y actividades recientes",
+          "desc": "Usa este bloque cuando quieras acompañar una nota con dos imágenes en paralelo o una mini galería.",
+          "images": ["", ""],
+          "imageCaptions": [
+            "Texto imagen 1",
+            "Texto imagen 2"
+          ],
+          "imageCaptionAligns": ["left", "center"]
+        }
+      ]
+    </script>
+
+    <script src="/send-feedback.js" defer></script>
     <script src="/admin.js" defer></script>
   </body>
 </html>

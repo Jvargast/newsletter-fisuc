@@ -1,59 +1,127 @@
-{% from "partials/placeholder.mjml" import imgBox %}
+{% set hasGallery = card.images is defined and (card.images | length) > 0 %}
+{% set hasSingleImage = card.image and not hasGallery %}
+{% set singleCaption = card.imageCaption if card.imageCaption else '' %}
+{% set singleAlign = card.imageCaptionAlign if card.imageCaptionAlign else 'center' %}
 
-{% if card.title or card.desc %}
-<mj-section background-color="#ffffff" padding="16px 24px">
+{% if card.title or card.source %}
+<mj-section background-color="#ffffff" padding="20px 24px 8px 24px">
   <mj-column>
+    {% if card.source %}
+    <mj-text font-size="12px" color="{{ brand.primary }}" font-weight="700" padding="0 0 6px 0">
+      <span style="text-transform:uppercase; letter-spacing:0.08em;">{{ card.source }}</span>
+    </mj-text>
+    {% endif %}
+
     {% if card.title %}
-    <mj-text font-size="20px" color="{{ brand.text }}" font-weight="700" padding="0 0 8px 0">
+    <mj-text font-size="22px" color="{{ brand.text }}" font-weight="700" padding="0">
       {{ card.title }}
     </mj-text>
     {% endif %}
+  </mj-column>
+</mj-section>
+{% endif %}
 
-    {% if card.desc %}
-    {% set raw = card.desc | replace('\r\n', '\n') %}
-    {% set paras = raw.split('\n\n') %}
-    {% for p in paras %}
-    <mj-text css-class="justify" padding="{{ '16px 0 0 0' if not loop.first else '0' }}" color="{{ brand.gray }}">
-      {{ p | replace('\n', '<br>') | safe }}
+{% if hasSingleImage %}
+<mj-section background-color="#ffffff" padding="0 24px 14px 24px">
+  <mj-column>
+    <mj-image
+      padding="0"
+      src="{{ card.image }}"
+      alt="{{ singleCaption or card.alt or card.title or 'Imagen' }}"
+      border-radius="18px"
+    />
+    {% if singleCaption %}
+    <mj-text
+      align="{{ singleAlign }}"
+      font-size="13px"
+      color="{{ brand.gray }}"
+      padding="8px 0 0 0"
+    >
+      <em>{{ singleCaption }}</em>
     </mj-text>
-    {% endfor %}
     {% endif %}
   </mj-column>
 </mj-section>
 {% endif %}
 
-{# Imagen única #}
-{% if card.image and (not card.images or (card.images | length) == 0) %}
-<mj-section background-color="#ffffff" padding="0 24px 16px 24px">
-  <mj-column>
-    <mj-image padding="0" src="{{ card.image }}" alt="{{ card.alt or card.title or 'Imagen' }}" />
-  </mj-column>
-</mj-section>
-{% endif %}
-
-{% if card.images is defined and (card.images | length) > 0 %}
+{% if hasGallery %}
 {% set imgs = card.images | default([]) %}
+{% set galleryCaptions = card.imageCaptions | default([]) %}
+{% set galleryAligns = card.imageCaptionAligns | default([]) %}
+{% set captionOne = galleryCaptions[0] if galleryCaptions | length > 0 and galleryCaptions[0] else '' %}
+{% set captionTwo = galleryCaptions[1] if galleryCaptions | length > 1 and galleryCaptions[1] else '' %}
+{% set alignOne = galleryAligns[0] if galleryAligns | length > 0 and galleryAligns[0] else 'center' %}
+{% set alignTwo = galleryAligns[1] if galleryAligns | length > 1 and galleryAligns[1] else 'center' %}
+{% set hasIndividualCaptions = (galleryCaptions | length > 0 and galleryCaptions[0]) or (galleryCaptions | length > 1 and galleryCaptions[1]) %}
 <mj-section background-color="#ffffff" padding="0 24px 8px 24px">
   <mj-column width="50%" vertical-align="top">
     {% if imgs | length > 0 and imgs[0] %}
-    <mj-image css-class="two-up" padding="0 8px 0 0" src="{{ imgs[0] }}" alt="{{ card.caption or 'Imagen 1' }}" width="280px" />
+    <mj-image
+      css-class="two-up"
+      padding="0 8px 0 0"
+      src="{{ imgs[0] }}"
+      alt="{{ captionOne or card.caption or 'Imagen 1' }}"
+      width="280px"
+      border-radius="18px"
+    />
+    {% if captionOne %}
+    <mj-text
+      align="{{ alignOne }}"
+      font-size="13px"
+      color="{{ brand.gray }}"
+      padding="8px 8px 0 0"
+    >
+      <em>{{ captionOne }}</em>
+    </mj-text>
+    {% endif %}
     {% endif %}
   </mj-column>
 
   <mj-column width="50%" vertical-align="top">
     {% if imgs | length > 1 and imgs[1] %}
-    <mj-image css-class="two-up" padding="0 0 0 8px" src="{{ imgs[1] }}" alt="{{ card.caption or 'Imagen 2' }}" width="280px" />
+    <mj-image
+      css-class="two-up"
+      padding="0 0 0 8px"
+      src="{{ imgs[1] }}"
+      alt="{{ captionTwo or card.caption or 'Imagen 2' }}"
+      width="280px"
+      border-radius="18px"
+    />
+    {% if captionTwo %}
+    <mj-text
+      align="{{ alignTwo }}"
+      font-size="13px"
+      color="{{ brand.gray }}"
+      padding="8px 0 0 8px"
+    >
+      <em>{{ captionTwo }}</em>
+    </mj-text>
+    {% endif %}
     {% endif %}
   </mj-column>
 </mj-section>
 
-{% if card.caption %}
-<mj-section background-color="#ffffff" padding="0 24px 16px 24px">
+{% if card.caption and not hasIndividualCaptions %}
+<mj-section background-color="#ffffff" padding="0 24px 14px 24px">
   <mj-column>
-    <mj-text align="center" font-size="13px" color="{{ brand.gray }}" padding="8px 0 0 0">
+    <mj-text align="center" font-size="13px" color="{{ brand.gray }}" padding="6px 0 0 0">
       <em>{{ card.caption }}</em>
     </mj-text>
   </mj-column>
 </mj-section>
 {% endif %}
+{% endif %}
+
+{% if card.desc %}
+<mj-section background-color="#ffffff" padding="0 24px 20px 24px">
+  <mj-column>
+    {% set raw = card.desc | replace('\r\n', '\n') %}
+    {% set paras = raw.split('\n\n') %}
+    {% for p in paras %}
+    <mj-text css-class="justify" padding="{{ '14px 0 0 0' if not loop.first else '0' }}" color="{{ brand.gray }}">
+      {{ p | replace('\n', '<br>') | safe }}
+    </mj-text>
+    {% endfor %}
+  </mj-column>
+</mj-section>
 {% endif %}

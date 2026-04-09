@@ -1,19 +1,22 @@
 node_modules/
 npm-debug.log*
 yarn.lock
-pnpm-locl.yaml
+pnpm-lock.yaml
 
 .DS_Store
 dist/
 .out/
 .tmp/
+out/
+release/
 
 .env
 .env.*.local
 public/uploads
 
 coverage/
-EOF
-
 bin/node-macos-arm64
 bin/node.exe
+
+.npm-cache/
+.npm-prefix/

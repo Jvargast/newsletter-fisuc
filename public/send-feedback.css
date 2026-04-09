@@ -1,0 +1,190 @@
+.send-action-btn {
+  --send-accent: #2563eb;
+  --send-accent-strong: #1d4ed8;
+  --send-accent-soft: rgba(37, 99, 235, 0.2);
+  position: relative;
+  min-width: 162px;
+  padding-inline: 14px 16px;
+  border-color: transparent;
+  color: #ffffff;
+  background:
+    linear-gradient(135deg, var(--send-accent) 0%, var(--send-accent-strong) 100%);
+  box-shadow:
+    0 16px 30px rgba(37, 99, 235, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.send-action-btn:hover {
+  box-shadow:
+    0 18px 34px rgba(37, 99, 235, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.send-action-btn:disabled {
+  cursor: wait;
+  opacity: 1;
+}
+
+.send-action-btn__inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.send-action-btn__icon,
+.send-action-btn__loader {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.send-action-btn__label {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.send-action-btn__loader {
+  position: relative;
+  display: none;
+}
+
+.send-action-btn__spinner {
+  position: absolute;
+  inset: 0;
+  display: block;
+  animation: send-feedback-spin 1.15s linear infinite;
+}
+
+.send-action-btn__ring {
+  position: absolute;
+  inset: 4px;
+  border: 2px solid rgba(255, 255, 255, 0.26);
+  border-top-color: #ffffff;
+  border-radius: 999px;
+}
+
+.send-action-btn__streak {
+  --angle: 0deg;
+  --delay: 0s;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.18), #ffffff);
+  transform:
+    translate(-50%, -50%)
+    rotate(var(--angle))
+    translateX(10px);
+  animation: send-feedback-pulse 1.05s ease-in-out infinite;
+  animation-delay: var(--delay);
+  transform-origin: center;
+}
+
+.send-action-btn__streak--1 {
+  --angle: 0deg;
+  --delay: 0s;
+}
+
+.send-action-btn__streak--2 {
+  --angle: 45deg;
+  --delay: -0.12s;
+}
+
+.send-action-btn__streak--3 {
+  --angle: 90deg;
+  --delay: -0.24s;
+}
+
+.send-action-btn__streak--4 {
+  --angle: 135deg;
+  --delay: -0.36s;
+}
+
+.send-action-btn__streak--5 {
+  --angle: 180deg;
+  --delay: -0.48s;
+}
+
+.send-action-btn__streak--6 {
+  --angle: 225deg;
+  --delay: -0.6s;
+}
+
+.send-action-btn__streak--7 {
+  --angle: 270deg;
+  --delay: -0.72s;
+}
+
+.send-action-btn__streak--8 {
+  --angle: 315deg;
+  --delay: -0.84s;
+}
+
+.send-action-btn.is-sending {
+  --send-accent: #1e40af;
+  --send-accent-strong: #1d4ed8;
+  box-shadow:
+    0 18px 34px rgba(37, 99, 235, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.send-action-btn.is-sending .send-action-btn__icon {
+  display: none;
+}
+
+.send-action-btn.is-sending .send-action-btn__loader {
+  display: inline-flex;
+}
+
+.send-action-btn.is-success {
+  --send-accent: #0d8c7d;
+  --send-accent-strong: #11a996;
+  box-shadow:
+    0 16px 30px rgba(13, 140, 125, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.send-action-btn.is-error {
+  --send-accent: #cf4e43;
+  --send-accent-strong: #b42318;
+  box-shadow:
+    0 16px 30px rgba(180, 35, 24, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+@keyframes send-feedback-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes send-feedback-pulse {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform:
+      translate(-50%, -50%)
+      rotate(var(--angle))
+      translateX(8px)
+      scaleX(0.88);
+  }
+
+  45% {
+    opacity: 1;
+    transform:
+      translate(-50%, -50%)
+      rotate(var(--angle))
+      translateX(11px)
+      scaleX(1.18);
+  }
+}

@@ -10,7 +10,10 @@ export NODE_ENV=production
 export npm_config_cache="$PWD/.npm-cache"
 export npm_config_prefix="$PWD/.npm-prefix"
 
-NODE_BIN="$PWD/bin/node-macos-x64"
+NODE_BIN="$PWD/bin/node-macos-arm64"
+if [[ ! -x "$NODE_BIN" ]]; then
+  NODE_BIN="$PWD/bin/node-macos-x64"
+fi
 if [[ ! -x "$NODE_BIN" ]]; then
   NODE_BIN="$(command -v node || true)"
 fi

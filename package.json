@@ -1,13 +1,22 @@
 {
   "name": "newsletter-fisuc",
+  "productName": "FISUC Newsletter",
   "version": "1.0.1",
-  "description": "",
-  "main": "index.js",
+  "description": "Editor visual local para crear, previsualizar y enviar newsletters HTML de FISUC.",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "node server.mjs",
-    "dev:watch": "nodemon server.mjs"
+    "dev:watch": "nodemon server.mjs",
+    "desktop:dev": "electron-forge start",
+    "desktop:package": "electron-forge package",
+    "desktop:make": "electron-forge make"
   },
-  "keywords": [],
+  "keywords": [
+    "newsletter",
+    "fisuc",
+    "mjml",
+    "electron"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
@@ -22,5 +31,10 @@
     "nodemailer": "^6.9.0",
     "nodemon": "^3.1.11",
     "nunjucks": "^3.2.4"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.8.1",
+    "@electron-forge/maker-zip": "^7.8.1",
+    "electron": "^37.2.0"
   }
 }

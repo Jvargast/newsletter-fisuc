@@ -26,7 +26,7 @@
       }
     </mj-style>
 
-    <mj-preview>{{ edition.preview | default('Novedades FISUC') }}</mj-preview>
+    <mj-preview>{{ edition.preheader | default(edition.preview | default('Novedades FISUC')) }}</mj-preview>
   </mj-head>
 
 
@@ -35,6 +35,13 @@
     {% include "partials/hero.mjml" %}
     {% for card in (edition.cards or []) %}
     {% include "partials/card.mjml" %}
+    {% if not loop.last %}
+    <mj-section background-color="#ffffff" padding="0 24px">
+      <mj-column>
+        <mj-divider border-color="#E5E7EB" border-width="1px" padding="8px 0 0 0" />
+      </mj-column>
+    </mj-section>
+    {% endif %}
     {% endfor %}
     {% include "partials/footer.mjml" %}
   </mj-body>
