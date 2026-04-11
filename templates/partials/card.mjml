@@ -2,6 +2,7 @@
 {% set hasSingleImage = card.image and not hasGallery %}
 {% set singleCaption = card.imageCaption if card.imageCaption else '' %}
 {% set singleAlign = card.imageCaptionAlign if card.imageCaptionAlign else 'center' %}
+{% set singleWidth = card.imageWidth if card.imageWidth else '' %}
 
 {% if card.title or card.source %}
 <mj-section background-color="#ffffff" padding="20px 24px 8px 24px">
@@ -29,6 +30,7 @@
       src="{{ card.image }}"
       alt="{{ singleCaption or card.alt or card.title or 'Imagen' }}"
       border-radius="18px"
+      {% if singleWidth %}width="{{ singleWidth }}px"{% endif %}
     />
     {% if singleCaption %}
     <mj-text
@@ -52,6 +54,9 @@
 {% set captionTwo = galleryCaptions[1] if galleryCaptions | length > 1 and galleryCaptions[1] else '' %}
 {% set alignOne = galleryAligns[0] if galleryAligns | length > 0 and galleryAligns[0] else 'center' %}
 {% set alignTwo = galleryAligns[1] if galleryAligns | length > 1 and galleryAligns[1] else 'center' %}
+{% set galleryWidths = card.imageWidths | default([]) %}
+{% set widthOne = galleryWidths[0] if galleryWidths | length > 0 and galleryWidths[0] else 280 %}
+{% set widthTwo = galleryWidths[1] if galleryWidths | length > 1 and galleryWidths[1] else 280 %}
 {% set hasIndividualCaptions = (galleryCaptions | length > 0 and galleryCaptions[0]) or (galleryCaptions | length > 1 and galleryCaptions[1]) %}
 <mj-section background-color="#ffffff" padding="0 24px 8px 24px">
   <mj-column width="50%" vertical-align="top">
@@ -61,7 +66,7 @@
       padding="0 8px 0 0"
       src="{{ imgs[0] }}"
       alt="{{ captionOne or card.caption or 'Imagen 1' }}"
-      width="280px"
+      width="{{ widthOne }}px"
       border-radius="18px"
     />
     {% if captionOne %}
@@ -84,7 +89,7 @@
       padding="0 0 0 8px"
       src="{{ imgs[1] }}"
       alt="{{ captionTwo or card.caption or 'Imagen 2' }}"
-      width="280px"
+      width="{{ widthTwo }}px"
       border-radius="18px"
     />
     {% if captionTwo %}

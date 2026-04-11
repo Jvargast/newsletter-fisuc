@@ -13,6 +13,11 @@
         <p class="eyebrow">FISUC / Constructor HTML</p>
         <h1>Editor visual de newsletter</h1>
       </div>
+      <div class="app-header__actions">
+        <button type="button" class="btn subtle header-config-btn" id="open_config_btn">
+          Configuración de envío
+        </button>
+      </div>
     </header>
 
     <aside>
@@ -334,9 +339,12 @@
 
           <button id="btnPreview" class="btn primary">Actualizar</button>
           <button id="btnDownload" class="btn">Descargar HTML</button>
-          <button id="btnSend" class="btn send-action-btn" data-idle-label="Enviar prueba">
-            Enviar prueba
-          </button>
+          <div class="send-action-wrap">
+            <button id="btnSend" class="btn send-action-btn" data-idle-label="Enviar prueba">
+              Enviar prueba
+            </button>
+            <p id="send_availability_hint" class="send-action-hint" aria-live="polite"></p>
+          </div>
         </div>
       </section>
 
@@ -440,6 +448,136 @@
       </div>
     </div>
 
+    <div id="config-modal" class="config-modal hidden" aria-hidden="true">
+      <div class="media-backdrop"></div>
+      <div class="config-dialog">
+        <header class="config-dialog__header">
+          <div>
+            <p class="eyebrow">Configuración local</p>
+            <h2>Configura el envío desde este equipo</h2>
+          </div>
+          <button type="button" class="btn ghost" id="config_close">
+            &times;
+          </button>
+        </header>
+
+        <div class="config-dialog__body">
+          <p class="config-dialog__copy">
+            Esta configuración se guarda solo en este equipo. Elige tu tipo de cuenta y sigue la guía.
+          </p>
+
+          <section class="config-section">
+            <div class="config-section__head">
+              <span class="config-step-badge">1</span>
+              <div>
+                <h3>Elige tu correo</h3>
+                <p>La app completa sola la configuración habitual según el tipo de cuenta.</p>
+              </div>
+            </div>
+            <div id="config_provider_cards" class="provider-cards"></div>
+          </section>
+
+          <section class="config-section">
+            <div class="config-section__head">
+              <span class="config-step-badge">2</span>
+              <div>
+                <h3>Prepara la cuenta</h3>
+                <p>Sigue estos pasos antes de escribir la contraseña o probar el envío.</p>
+              </div>
+            </div>
+            <div id="config_setup_steps" class="setup-steps"></div>
+          </section>
+
+          <section class="config-section">
+            <div class="config-section__head">
+              <span class="config-step-badge">3</span>
+              <div>
+                <h3>Ingresa tus datos</h3>
+                <p>Para la mayoría de los casos solo necesitas el correo, la clave y el nombre visible.</p>
+              </div>
+            </div>
+
+            <div class="config-form-layout">
+              <div class="config-main-fields">
+                <div class="field config-field config-field--wide">
+                  <label>Correo que enviará las pruebas</label>
+                  <input id="config_from_email" placeholder="tu-correo@dominio.com" />
+                </div>
+
+                <div class="field config-field config-field--wide">
+                  <label>Contraseña o clave de aplicación</label>
+                  <input id="config_smtp_pass" type="password" placeholder="Pega aquí la clave que te entrega tu proveedor" />
+                  <small id="config_pass_note"></small>
+                </div>
+
+                <div class="field config-field">
+                  <label>Nombre visible</label>
+                  <input id="config_from_name" placeholder="FISUC Newsletter" />
+                </div>
+
+                <div class="field config-field">
+                  <label>Correo para la prueba</label>
+                  <input id="config_test_to" placeholder="correo@dominio.com" />
+                </div>
+              </div>
+
+              <aside class="config-side-note">
+                <div class="config-side-note__badge">Tip</div>
+                <h4>Primera prueba</h4>
+                <p>Usa un correo que controles para validar rápido si la cuenta quedó lista.</p>
+              </aside>
+            </div>
+
+            <details class="config-advanced" id="config_advanced">
+              <summary>Ajustes avanzados</summary>
+              <p class="config-advanced__copy">
+                Solo abre esto si tu proveedor te pidió datos distintos o si estás usando un servidor SMTP propio.
+              </p>
+
+              <div class="grid-2">
+                <div class="field">
+                  <label>Servidor de salida</label>
+                  <input id="config_smtp_host" placeholder="smtp.tu-proveedor.com" />
+                </div>
+
+                <div class="field">
+                  <label>Puerto</label>
+                  <input id="config_smtp_port" type="number" min="1" max="65535" placeholder="587" />
+                </div>
+
+                <div class="field">
+                  <label>Usuario de inicio de sesión</label>
+                  <input id="config_smtp_user" placeholder="Si lo dejas vacío se usará el mismo correo de envío" />
+                </div>
+              </div>
+            </details>
+
+            <div id="config_step_status" class="config-step-status"></div>
+            <div id="config_feedback" class="config-feedback" aria-live="polite"></div>
+          </section>
+        </div>
+
+        <footer class="config-dialog__footer">
+          <div class="config-dialog__footer-copy">
+            <span class="config-step-badge">4</span>
+            <div>
+              <strong>Prueba y guarda</strong>
+              <p>Valida la conexión primero. Cuando funcione, guarda y ya podrás enviar pruebas desde la app.</p>
+            </div>
+          </div>
+          <button type="button" class="btn" id="config_cancel">
+            Más tarde
+          </button>
+          <button type="button" class="btn" id="config_test">
+            Probar conexión
+          </button>
+          <button type="button" class="btn primary" id="config_save">
+            Guardar
+          </button>
+        </footer>
+      </div>
+    </div>
+
     <div id="image-editor-modal" class="editor-modal hidden">
       <div class="media-backdrop"></div>
       <div class="editor-dialog">
@@ -517,6 +655,110 @@
               </button>
               <button type="button" class="btn primary" id="image_editor_apply">
                 Aplicar recorte
+              </button>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+
+    <div id="image-size-modal" class="editor-modal hidden">
+      <div class="media-backdrop"></div>
+      <div class="editor-dialog">
+        <header class="editor-header">
+          <div>
+            <p class="eyebrow">Tamaño de imagen</p>
+            <h2>Ajusta el tamaño visual en el correo</h2>
+          </div>
+          <button type="button" class="btn ghost" id="image_size_close">
+            &times;
+          </button>
+        </header>
+
+        <div class="editor-body">
+          <section class="editor-stage-wrap">
+            <div class="editor-stage size-editor-stage">
+              <div class="size-editor-canvas" id="image_size_canvas">
+                <div class="size-editor-media" id="image_size_media">
+                  <img id="image_size_preview" alt="Vista previa de tamaño" />
+                  <span class="image-resize-handle image-resize-handle--nw" data-size-resize-handle="nw" aria-hidden="true"></span>
+                  <span class="image-resize-handle image-resize-handle--ne" data-size-resize-handle="ne" aria-hidden="true"></span>
+                  <span class="image-resize-handle image-resize-handle--sw" data-size-resize-handle="sw" aria-hidden="true"></span>
+                  <span class="image-resize-handle image-resize-handle--se" data-size-resize-handle="se" aria-hidden="true"></span>
+                </div>
+              </div>
+            </div>
+            <p class="editor-hint">
+              Arrastra una esquina o usa los controles para definir el tamaño
+              final con el que se verá en el correo, sin alterar la imagen
+              original.
+            </p>
+          </section>
+
+          <aside class="editor-controls">
+            <div class="field">
+              <label>Imagen actual</label>
+              <div class="editor-source" id="image_size_source">
+                Esperando imagen
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div class="field">
+                <label>Ancho en correo</label>
+                <input
+                  id="image_size_width"
+                  type="number"
+                  min="80"
+                  max="552"
+                  step="1"
+                  value="552"
+                />
+              </div>
+
+              <div class="field">
+                <label>Alto proporcional</label>
+                <div class="editor-metric" id="image_size_height_label">
+                  -
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Escala visual</label>
+              <input
+                id="image_size_range"
+                type="range"
+                min="80"
+                max="552"
+                step="1"
+                value="552"
+              />
+              <small id="image_size_range_label">100%</small>
+            </div>
+
+            <div class="grid-2">
+              <div class="field">
+                <label>Tamaño original</label>
+                <div class="editor-metric" id="image_size_original">
+                  -
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Ancho máximo</label>
+                <div class="editor-metric" id="image_size_limit">
+                  -
+                </div>
+              </div>
+            </div>
+
+            <div class="editor-actions">
+              <button type="button" class="btn" id="image_size_reset">
+                Resetear
+              </button>
+              <button type="button" class="btn primary" id="image_size_apply">
+                Aplicar tamaño
               </button>
             </div>
           </aside>

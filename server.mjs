@@ -14,6 +14,153 @@ import { fileURLToPath } from "url";
 
 const MODULE_FILE = fileURLToPath(import.meta.url);
 const MODULE_DIR = path.dirname(MODULE_FILE);
+const DEFAULT_FROM_NAME = "FISUC Newsletter";
+
+function toCleanString(value = "") {
+  return sanitizeHeaderText(String(value ?? ""));
+}
+
+function normalizeSmtpPort(value) {
+  if (value === null || typeof value === "undefined" || value === "") {
+    return "";
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return "";
+  return String(Math.round(parsed));
+}
+
+function normalizeMailConfig(raw = {}) {
+  return {
+    smtpHost: toCleanString(raw.smtpHost),
+    smtpPort: normalizeSmtpPort(raw.smtpPort),
+    smtpUser: toCleanString(raw.smtpUser),
+    smtpPass: String(raw.smtpPass ?? ""),
+    fromEmail: toCleanString(raw.fromEmail),
+    fromName: toCleanString(raw.fromName || DEFAULT_FROM_NAME),
+    testTo: toCleanString(raw.testTo),
+  };
+}
+
+function getEnvMailConfig() {
+  return normalizeMailConfig({
+    smtpHost: process.env.SMTP_HOST,
+    smtpPort: process.env.SMTP_PORT || 587,
+    smtpUser: process.env.SMTP_USER,
+    smtpPass: process.env.SMTP_PASS,
+    fromEmail: process.env.FROM_EMAIL,
+    fromName: process.env.FROM_NAME || DEFAULT_FROM_NAME,
+    testTo: process.env.TEST_TO,
+  });
+}
+
+function isMailConfigComplete(config = {}) {
+  return Boolean(
+    config.smtpHost &&
+      config.smtpPort &&
+      config.smtpUser &&
+      config.smtpPass &&
+      config.fromEmail
+  );
+}
+
+function createConfigStore(configPath) {
+  function read() {
+    if (!configPath || !fs.existsSync(configPath)) return null;
+
+    try {
+      const raw = JSON.parse(fs.readFileSync(configPath, "utf8"));
+      const source = raw?.mail || raw || {};
+      return normalizeMailConfig(source);
+    } catch (error) {
+      console.warn("No se pudo leer la configuración local:", error);
+      return null;
+    }
+  }
+
+  function write(config) {
+    if (!configPath) {
+      throw new Error("El almacenamiento local no está disponible en este modo.");
+    }
+
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    const payload = {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      mail: normalizeMailConfig(config),
+    };
+    fs.writeFileSync(configPath, JSON.stringify(payload, null, 2), "utf8");
+    return payload.mail;
+  }
+
+  function resolve() {
+    const stored = read();
+    const env = getEnvMailConfig();
+    const actual = normalizeMailConfig({
+      ...env,
+      ...(stored || {}),
+    });
+
+    let source = "none";
+    if (stored && isMailConfigComplete(actual)) {
+      source = "stored";
+    } else if (isMailConfigComplete(env)) {
+      source = "env";
+    }
+
+    return {
+      actual,
+      stored,
+      env,
+      source,
+      canPersist: Boolean(configPath),
+      isConfigured: isMailConfigComplete(actual),
+    };
+  }
+
+  return { read, write, resolve, configPath };
+}
+
+function mailConfigForClient(config = {}) {
+  const normalized = normalizeMailConfig(config);
+  return {
+    smtpHost: normalized.smtpHost,
+    smtpPort: normalized.smtpPort || "587",
+    smtpUser: normalized.smtpUser,
+    smtpPass: "",
+    fromEmail: normalized.fromEmail,
+    fromName: normalized.fromName || DEFAULT_FROM_NAME,
+    testTo: normalized.testTo,
+    hasPassword: Boolean(normalized.smtpPass),
+  };
+}
+
+function mergeEditableMailConfig(existing = {}, incoming = {}) {
+  const normalizedIncoming = normalizeMailConfig(incoming);
+  const normalizedExisting = normalizeMailConfig(existing);
+
+  return normalizeMailConfig({
+    ...normalizedExisting,
+    ...normalizedIncoming,
+    smtpPass:
+      typeof incoming.smtpPass === "string" && incoming.smtpPass
+        ? incoming.smtpPass
+        : normalizedExisting.smtpPass,
+  });
+}
+
+function createMailTransport(config = {}) {
+  const smtpPort = Number(config.smtpPort || 465);
+  return nodemailer.createTransport({
+    host: config.smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    auth: {
+      user: config.smtpUser,
+      pass: config.smtpPass,
+    },
+  });
+}
 
 function escapeHtmlText(value = "") {
   return String(value)
@@ -25,6 +172,21 @@ function escapeHtmlText(value = "") {
 
 function sanitizeHeaderText(value = "") {
   return String(value).replace(/[\r\n]+/g, " ").trim();
+}
+
+function sanitizeImageWidth(value, min, max) {
+  if (
+    value === null ||
+    typeof value === "undefined" ||
+    (typeof value === "string" && !value.trim())
+  ) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  const next = Math.round(Math.min(Math.max(parsed, min), max));
+  return next >= max ? null : next;
 }
 
 function sanitizeCard(card = {}) {
@@ -50,6 +212,16 @@ function sanitizeCard(card = {}) {
 
   if (Array.isArray(next.images)) {
     next.images = next.images.map((value) => escapeHtmlText(value));
+  }
+
+  if (typeof next.imageWidth !== "undefined") {
+    next.imageWidth = sanitizeImageWidth(next.imageWidth, 120, 552);
+  }
+
+  if (Array.isArray(next.imageWidths)) {
+    next.imageWidths = next.imageWidths.map((value) =>
+      sanitizeImageWidth(value, 80, 280)
+    );
   }
 
   return next;
@@ -163,6 +335,7 @@ export function createNewsletterApp(options = {}) {
   const uploadsDir =
     options.uploadsDir || path.join(rootDir, "public", "uploads");
   const templatesDir = path.join(rootDir, "templates");
+  const configStore = createConfigStore(options.configPath || null);
 
   loadEnvironment(rootDir, options.envPath);
   fs.mkdirSync(uploadsDir, { recursive: true });
@@ -176,6 +349,80 @@ export function createNewsletterApp(options = {}) {
   app.use(express.json({ limit: "2mb" }));
   app.use(express.static(publicDir));
   app.use("/uploads", express.static(uploadsDir));
+
+  app.get("/api/app-config", (req, res) => {
+    const resolved = configStore.resolve();
+    const values = mailConfigForClient(resolved.actual);
+
+    res.json({
+      ok: true,
+      mode: resolved.canPersist ? "desktop" : "web",
+      canPersist: resolved.canPersist,
+      source: resolved.source,
+      isConfigured: resolved.isConfigured,
+      values,
+    });
+  });
+
+  app.post("/api/app-config/test", async (req, res) => {
+    try {
+      const resolved = configStore.resolve();
+      const config = mergeEditableMailConfig(resolved.stored || resolved.env, req.body || {});
+
+      if (!isMailConfigComplete(config)) {
+        return res.status(400).json({
+          ok: false,
+          error: "Completa host, puerto, usuario, contraseña y remitente antes de probar.",
+        });
+      }
+
+      const transporter = createMailTransport(config);
+      await transporter.verify();
+
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Error validando configuración SMTP:", error);
+      res.status(500).json({
+        ok: false,
+        error: error.message || "No se pudo validar la configuración SMTP",
+      });
+    }
+  });
+
+  app.put("/api/app-config", (req, res) => {
+    try {
+      if (!configStore.configPath) {
+        return res.status(400).json({
+          ok: false,
+          error: "La configuración local solo está disponible en modo escritorio.",
+        });
+      }
+
+      const existing = configStore.read() || {};
+      const next = mergeEditableMailConfig(existing, req.body || {});
+
+      if (!isMailConfigComplete(next)) {
+        return res.status(400).json({
+          ok: false,
+          error: "Completa host, puerto, usuario, contraseña y remitente para guardar.",
+        });
+      }
+
+      const saved = configStore.write(next);
+      res.json({
+        ok: true,
+        isConfigured: true,
+        source: "stored",
+        values: mailConfigForClient(saved),
+      });
+    } catch (error) {
+      console.error("Error guardando configuración local:", error);
+      res.status(500).json({
+        ok: false,
+        error: error.message || "No se pudo guardar la configuración",
+      });
+    }
+  });
 
   app.get("/api/media", async (req, res) => {
     try {
@@ -257,23 +504,31 @@ export function createNewsletterApp(options = {}) {
       const { to } = req.query;
       const { html: rawHtml, text } = buildHtml(req.body || {});
       const { html, attachments } = cidify(rawHtml);
+      const resolvedConfig = configStore.resolve();
+      const mailConfig = resolvedConfig.actual;
 
-      const smtpPort = Number(process.env.SMTP_PORT || 465);
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: smtpPort,
-        secure: smtpPort === 465,
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      });
+      if (!isMailConfigComplete(mailConfig)) {
+        return res.status(400).json({
+          ok: false,
+          error:
+            "Falta la configuración de envío. Abre la configuración de la app y completa SMTP y remitente.",
+        });
+      }
+
+      const transporter = createMailTransport(mailConfig);
+      const targetEmail = to || mailConfig.testTo;
+
+      if (!targetEmail) {
+        return res.status(400).json({
+          ok: false,
+          error:
+            "Falta el correo de destino para la prueba. Completa uno en la app o en la configuración.",
+        });
+      }
 
       const info = await transporter.sendMail({
-        from: `${process.env.FROM_NAME || "Newsletter"} <${
-          process.env.FROM_EMAIL
-        }>`,
-        to: to || process.env.TEST_TO,
+        from: `${mailConfig.fromName || DEFAULT_FROM_NAME} <${mailConfig.fromEmail}>`,
+        to: targetEmail,
         subject:
           req.body?.edition?.subject ||
           req.body?.edition?.preheader ||

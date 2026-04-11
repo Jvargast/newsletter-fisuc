@@ -1,4 +1,13 @@
 const STORAGE_KEY = "newsletter-fisuc-draft-v2";
+const CONFIG_FIELD_IDS = [
+  "config_smtp_host",
+  "config_smtp_port",
+  "config_smtp_user",
+  "config_smtp_pass",
+  "config_from_email",
+  "config_from_name",
+  "config_test_to",
+];
 const FIELD_IDS = [
   "issue",
   "date",
@@ -55,6 +64,132 @@ const MONTH_NAMES = [
   "noviembre",
   "diciembre",
 ];
+const PROVIDER_PRESETS = {
+  gmail: {
+    key: "gmail",
+    label: "Gmail",
+    tone: "gmail",
+    description: "Ideal si usarás una cuenta Google con contraseña de aplicación.",
+    host: "smtp.gmail.com",
+    port: "587",
+    iconSrc: "/provider-icons/gmail.svg",
+    meta: "Configuración automática",
+    steps: [
+      {
+        title: "Entra a tu Cuenta de Google",
+        copy:
+          "Abre la seguridad de tu cuenta Google y revisa si ya tienes activada la verificación en dos pasos.",
+        links: [
+          {
+            label: "Google: verificación en dos pasos",
+            url: "https://support.google.com/accounts/answer/185839",
+          },
+        ],
+      },
+      {
+        title: "Crea una contraseña de aplicación",
+        copy:
+          "Google te entregará una clave de 16 caracteres. Esa es la que debes pegar en esta app como contraseña.",
+        links: [
+          {
+            label: "Google: contraseñas de aplicación",
+            url: "https://support.google.com/mail/answer/185833",
+          },
+        ],
+      },
+      {
+        title: "Vuelve a esta pantalla",
+        copy:
+          "Escribe tu correo Gmail, pega la clave de aplicación y define el nombre visible. La parte técnica se completa sola.",
+        links: [
+          {
+            label: "Google: ayuda SMTP",
+            url: "https://support.google.com/a/answer/176600?hl=en",
+          },
+        ],
+      },
+      {
+        title: "Si no ves la opción",
+        copy:
+          "Si es una cuenta de trabajo o estudio, puede que el administrador haya bloqueado las contraseñas de aplicación. En ese caso esta app no podrá usar esa cuenta todavía.",
+      },
+    ],
+  },
+  office365: {
+    key: "office365",
+    label: "Outlook / Microsoft 365",
+    tone: "outlook",
+    description: "Pensado para cuentas de trabajo o institución en Microsoft 365.",
+    host: "smtp.office365.com",
+    port: "587",
+    iconSrc: "/provider-icons/outlook.svg",
+    meta: "Configuración automática",
+    steps: [
+      {
+        title: "Confirma que tu cuenta pueda enviar desde apps",
+        copy:
+          "En muchas organizaciones esta opción está bloqueada por seguridad. Si es una cuenta de empresa o universidad, quizá necesites ayuda del administrador.",
+        links: [
+          {
+            label: "Microsoft: envío autenticado",
+            url: "https://learn.microsoft.com/en-us/Exchange/clients-and-mobile-in-exchange-online/authenticated-client-smtp-submission",
+          },
+        ],
+      },
+      {
+        title: "Usa tu correo completo",
+        copy:
+          "Normalmente aquí usarás el correo completo de la cuenta que enviará las pruebas y su contraseña.",
+      },
+      {
+        title: "Si falla aunque la clave esté bien",
+        copy:
+          "El problema suele estar en una política de seguridad del tenant, permisos del buzón o en que el método de inicio de sesión permitido no sea compatible con esta app.",
+      },
+      {
+        title: "Para cuentas personales Outlook.com",
+        copy:
+          "Si usas una cuenta personal Outlook.com, este flujo puede no funcionar porque Microsoft suele exigir métodos más modernos como OAuth.",
+      },
+    ],
+  },
+  custom: {
+    key: "custom",
+    label: "Otro SMTP",
+    tone: "smtp",
+    description: "Para hosting, dominio propio o cualquier servidor distinto.",
+    host: "",
+    port: "587",
+    iconSrc: "/provider-icons/smtp.svg",
+    meta: "Requiere ajustes avanzados",
+    steps: [
+      {
+        title: "Pide los datos del servidor",
+        copy:
+          "Tu proveedor debería entregarte correo de envío, contraseña, servidor, puerto y si el usuario es el mismo correo o uno distinto.",
+      },
+      {
+        title: "Confirma desde qué dirección puedes enviar",
+        copy:
+          "Algunos servicios obligan a usar exactamente la misma dirección que autentica la conexión.",
+      },
+      {
+        title: "Abre los ajustes avanzados",
+        copy:
+          "En este caso sí tendrás que completar manualmente el servidor, el puerto y, si aplica, el usuario de inicio de sesión.",
+      },
+      {
+        title: "Prueba antes de guardar",
+        copy:
+          "Si no responde bien, vuelve a revisar los datos con tu proveedor antes de guardar la configuración.",
+      },
+    ],
+  },
+};
+const STORY_IMAGE_MAX_WIDTH = 552;
+const STORY_IMAGE_MIN_WIDTH = 120;
+const GALLERY_IMAGE_MAX_WIDTH = 280;
+const GALLERY_IMAGE_MIN_WIDTH = 80;
 
 const mediaState = {
   items: [],
@@ -96,6 +231,53 @@ const state = {
     startOffsetX: 0,
     startOffsetY: 0,
   },
+  imageSizeEditor: {
+    open: false,
+    cardId: null,
+    slot: null,
+    imageUrl: "",
+    imageName: "",
+    image: null,
+    currentWidth: 0,
+    minWidth: 0,
+    maxWidth: 0,
+    dragPointerId: null,
+    centerX: 0,
+    centerY: 0,
+    startDistance: 1,
+    startWidth: 0,
+  },
+  imageResize: {
+    active: false,
+    pointerId: null,
+    cardId: null,
+    slot: null,
+    slotWrap: null,
+    startWidth: 0,
+    currentWidth: 0,
+    minWidth: 0,
+    maxWidth: 0,
+    centerX: 0,
+    centerY: 0,
+    startDistance: 1,
+  },
+  selectedImage: {
+    cardId: null,
+    slot: null,
+  },
+  appConfig: {
+    loaded: false,
+    loading: false,
+    loadError: "",
+    saving: false,
+    testing: false,
+    canPersist: false,
+    isConfigured: false,
+    source: "none",
+    values: {},
+    providerKey: "",
+    lastTestOk: false,
+  },
 };
 
 function id(name) {
@@ -107,6 +289,54 @@ function getSendButtonUi() {
     sendButtonUi = window.createSendFeedback(id("btnSend"));
   }
   return sendButtonUi;
+}
+
+function setSendAvailabilityHint(message = "", tone = "") {
+  const hint = id("send_availability_hint");
+  if (!hint) return;
+  hint.textContent = message;
+  if (tone) {
+    hint.dataset.tone = tone;
+  } else {
+    delete hint.dataset.tone;
+  }
+}
+
+function refreshSendAvailability() {
+  const sendUi = getSendButtonUi();
+  if (!sendUi) return;
+
+  if (state.appConfig.loading) {
+    sendUi.lock("Enviar prueba");
+    setSendAvailabilityHint("Revisando envío...", "");
+    return;
+  }
+
+  if (state.appConfig.loadError) {
+    sendUi.lock("Enviar prueba");
+    setSendAvailabilityHint(state.appConfig.loadError, "error");
+    return;
+  }
+
+  if (!state.appConfig.loaded) {
+    sendUi.lock("Enviar prueba");
+    setSendAvailabilityHint("Revisando envío...", "");
+    return;
+  }
+
+  if (!state.appConfig.isConfigured) {
+    sendUi.lock("Enviar prueba");
+    setSendAvailabilityHint(
+      state.appConfig.canPersist
+        ? "Configura el envío para habilitar esta acción."
+        : "El envío todavía no está disponible en esta sesión.",
+      "warning"
+    );
+    return;
+  }
+
+  sendUi.unlock("Enviar prueba");
+  setSendAvailabilityHint("");
 }
 
 function valueOf(name, fallback = "") {
@@ -122,6 +352,41 @@ function setValue(name, value) {
     return;
   }
   el.value = value ?? "";
+}
+
+function configValueOf(name, fallback = "") {
+  const el = id(`config_${name}`);
+  return el && typeof el.value !== "undefined" ? el.value : fallback;
+}
+
+function setConfigValue(name, value) {
+  const el = id(`config_${name}`);
+  if (!el || typeof el.value === "undefined") return;
+  el.value = value ?? "";
+}
+
+function setButtonBusy(button, isBusy, label) {
+  if (!button) return;
+  if (!button.dataset.originalLabel) {
+    button.dataset.originalLabel = button.textContent.trim();
+  }
+
+  if (isBusy) {
+    button.disabled = true;
+    if (label) button.textContent = label;
+    return;
+  }
+
+  button.disabled = false;
+  button.textContent = button.dataset.originalLabel || button.textContent;
+}
+
+function inferProviderKey(values = {}) {
+  const host = String(values.smtpHost || "").trim().toLowerCase();
+  if (!host) return "";
+  if (host.includes("gmail")) return "gmail";
+  if (host.includes("office365")) return "office365";
+  return "custom";
 }
 
 function escapeHtml(value = "") {
@@ -327,6 +592,127 @@ function normalizeAlignArray(raw, size = 2, fallback = "center") {
   );
 }
 
+function normalizeImageWidth(raw, maxWidth, minWidth) {
+  if (
+    raw === null ||
+    typeof raw === "undefined" ||
+    (typeof raw === "string" && !raw.trim())
+  ) {
+    return null;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return null;
+  const next = Math.round(clamp(parsed, minWidth, maxWidth));
+  return next >= maxWidth ? null : next;
+}
+
+function normalizeImageWidthArray(raw, size = 2) {
+  if (!Array.isArray(raw)) {
+    return Array.from({ length: size }, () => null);
+  }
+
+  return Array.from({ length: size }, (_, index) =>
+    normalizeImageWidth(raw[index], GALLERY_IMAGE_MAX_WIDTH, GALLERY_IMAGE_MIN_WIDTH)
+  );
+}
+
+function hasCustomImageWidth(values = []) {
+  return values.some((value) => Number.isFinite(value));
+}
+
+function getCardImageMaxWidth(card, slot) {
+  return slot === "image" ? STORY_IMAGE_MAX_WIDTH : GALLERY_IMAGE_MAX_WIDTH;
+}
+
+function getCardImageMinWidth(card, slot) {
+  return slot === "image" ? STORY_IMAGE_MIN_WIDTH : GALLERY_IMAGE_MIN_WIDTH;
+}
+
+function getCardStoredImageWidth(card, slot) {
+  if (slot === "image") return Number.isFinite(card.imageWidth) ? card.imageWidth : null;
+  const index = Number(slot);
+  return Number.isFinite(card.imageWidths?.[index]) ? card.imageWidths[index] : null;
+}
+
+function getCardImageEffectiveWidth(card, slot) {
+  return getCardStoredImageWidth(card, slot) || getCardImageMaxWidth(card, slot);
+}
+
+function getCardImageSizeLabel(card, slot) {
+  const maxWidth = getCardImageMaxWidth(card, slot);
+  const width = getCardImageEffectiveWidth(card, slot);
+  return width >= maxWidth ? `Auto (${maxWidth}px)` : `${width}px`;
+}
+
+function getCardImagePreviewMeta(card, slot) {
+  const maxWidth = getCardImageMaxWidth(card, slot);
+  const currentWidth = getCardImageEffectiveWidth(card, slot);
+  return {
+    currentWidth,
+    maxWidth,
+    widthPercent: (currentWidth / maxWidth) * 100,
+    sizeLabel: getCardImageSizeLabel(card, slot),
+  };
+}
+
+function normalizeSlotKey(slot) {
+  return slot === "image" ? "image" : String(Number(slot));
+}
+
+function isImageSelected(cardId, slot) {
+  return (
+    state.selectedImage.cardId === cardId &&
+    state.selectedImage.slot === normalizeSlotKey(slot)
+  );
+}
+
+function syncImageSelectionUi(root = document) {
+  root.querySelectorAll("[data-select-image]").forEach((node) => {
+    const active = isImageSelected(node.dataset.cardId, node.dataset.slot);
+    node.classList.toggle("is-selected", active);
+    node.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+
+  root.querySelectorAll("[data-image-hint]").forEach((node) => {
+    const active = isImageSelected(node.dataset.cardId, node.dataset.slot);
+    node.textContent = active
+      ? "Arrastra una esquina o usa el botón de tamaño para abrir el editor grande sin modificar la imagen original."
+      : "Haz click en la imagen para seleccionarla o usa el botón de tamaño para abrir el editor grande.";
+  });
+}
+
+function setSelectedImage(cardId, slot) {
+  state.selectedImage.cardId = cardId || null;
+  state.selectedImage.slot = cardId ? normalizeSlotKey(slot) : null;
+  syncImageSelectionUi();
+}
+
+function clearSelectedImage() {
+  if (!state.selectedImage.cardId && !state.selectedImage.slot) return;
+  state.selectedImage.cardId = null;
+  state.selectedImage.slot = null;
+  syncImageSelectionUi();
+}
+
+function setCardImageWidth(card, slot, width) {
+  const maxWidth = getCardImageMaxWidth(card, slot);
+  const minWidth = getCardImageMinWidth(card, slot);
+  const normalized = normalizeImageWidth(width, maxWidth, minWidth);
+
+  if (slot === "image") {
+    card.imageWidth = normalized;
+    return card;
+  }
+
+  const index = Number(slot);
+  card.imageWidths = Array.isArray(card.imageWidths)
+    ? [...card.imageWidths]
+    : [null, null];
+  card.imageWidths[index] = normalized;
+  return card;
+}
+
 function getCardLabel(card, index) {
   const title = String(card?.title || "").trim();
   return title || `Bloque ${index + 1}`;
@@ -396,6 +782,12 @@ function normalizeCard(raw = {}) {
     : ["", ""];
   const galleryCaptions = normalizeTextArray(raw.imageCaptions);
   const galleryCaptionAligns = normalizeAlignArray(raw.imageCaptionAligns);
+  const storyImageWidth = normalizeImageWidth(
+    raw.imageWidth,
+    STORY_IMAGE_MAX_WIDTH,
+    STORY_IMAGE_MIN_WIDTH
+  );
+  const galleryImageWidths = normalizeImageWidthArray(raw.imageWidths);
 
   let type = raw.type;
   if (!type) {
@@ -413,9 +805,11 @@ function normalizeCard(raw = {}) {
     source: parsed.source,
     desc: parsed.desc,
     image: String(raw.image || ""),
+    imageWidth: storyImageWidth,
     imageCaption: String(raw.imageCaption || ""),
     imageCaptionAlign: normalizeCaptionAlign(raw.imageCaptionAlign),
     images: galleryImages,
+    imageWidths: galleryImageWidths,
     caption: String(raw.caption || ""),
     imageCaptions: galleryCaptions,
     imageCaptionAligns: galleryCaptionAligns,
@@ -423,10 +817,12 @@ function normalizeCard(raw = {}) {
 
   if (type === "gallery") {
     card.image = "";
+    card.imageWidth = null;
     card.imageCaption = "";
     card.imageCaptionAlign = "center";
   } else {
     card.images = ["", ""];
+    card.imageWidths = [null, null];
     card.imageCaptions = ["", ""];
     card.imageCaptionAligns = ["center", "center"];
     card.caption = type === "note" ? "" : card.caption;
@@ -434,6 +830,7 @@ function normalizeCard(raw = {}) {
 
   if (type === "note") {
     card.image = "";
+    card.imageWidth = null;
     card.imageCaption = "";
     card.imageCaptionAlign = "center";
     card.caption = "";
@@ -457,6 +854,14 @@ function convertCardType(card, nextType) {
   if (nextType === "gallery") {
     next.images = [card.images?.[0] || card.image || "", card.images?.[1] || ""];
     next.image = "";
+    next.imageWidths = normalizeImageWidthArray(card.imageWidths);
+    if (!next.imageWidths[0] && Number.isFinite(card.imageWidth)) {
+      next.imageWidths[0] = normalizeImageWidth(
+        card.imageWidth,
+        GALLERY_IMAGE_MAX_WIDTH,
+        GALLERY_IMAGE_MIN_WIDTH
+      );
+    }
     next.imageCaptions = normalizeTextArray(card.imageCaptions);
     next.imageCaptionAligns = normalizeAlignArray(card.imageCaptionAligns);
     if (!next.imageCaptions[0] && card.imageCaption) {
@@ -468,23 +873,32 @@ function convertCardType(card, nextType) {
     ) {
       next.imageCaptionAligns[0] = normalizeCaptionAlign(card.imageCaptionAlign);
     }
+    next.imageWidth = null;
     next.imageCaption = "";
     next.imageCaptionAlign = "center";
   } else if (nextType === "story") {
     next.image = card.image || card.images?.[0] || "";
+    next.imageWidth = normalizeImageWidth(
+      card.imageWidth ?? card.imageWidths?.[0],
+      STORY_IMAGE_MAX_WIDTH,
+      STORY_IMAGE_MIN_WIDTH
+    );
     next.imageCaption = String(card.imageCaption || card.imageCaptions?.[0] || "");
     next.imageCaptionAlign = normalizeCaptionAlign(
       card.imageCaptionAlign || card.imageCaptionAligns?.[0] || "center"
     );
     next.images = ["", ""];
+    next.imageWidths = [null, null];
     next.imageCaptions = ["", ""];
     next.imageCaptionAligns = ["center", "center"];
     next.caption = "";
   } else {
     next.image = "";
+    next.imageWidth = null;
     next.imageCaption = "";
     next.imageCaptionAlign = "center";
     next.images = ["", ""];
+    next.imageWidths = [null, null];
     next.imageCaptions = ["", ""];
     next.imageCaptionAligns = ["center", "center"];
     next.caption = "";
@@ -502,6 +916,7 @@ function exportCard(card) {
 
   if (card.type === "gallery") {
     if (card.images.some(Boolean)) out.images = [...card.images];
+    if (hasCustomImageWidth(card.imageWidths)) out.imageWidths = [...card.imageWidths];
     if (hasText(card.imageCaptions)) out.imageCaptions = [...card.imageCaptions];
     if (hasText(card.imageCaptions) || hasNonDefaultAlign(card.imageCaptionAligns)) {
       out.imageCaptionAligns = [...card.imageCaptionAligns];
@@ -509,6 +924,7 @@ function exportCard(card) {
     if (card.caption.trim()) out.caption = card.caption.trim();
   } else {
     if (card.image.trim()) out.image = card.image.trim();
+    if (Number.isFinite(card.imageWidth)) out.imageWidth = card.imageWidth;
     if (card.imageCaption.trim()) out.imageCaption = card.imageCaption.trim();
     if (
       card.imageCaption.trim() ||
@@ -530,6 +946,7 @@ function toPayloadCard(card) {
 
   if (card.type === "gallery") {
     if (card.images.some(Boolean)) out.images = [...card.images];
+    if (hasCustomImageWidth(card.imageWidths)) out.imageWidths = [...card.imageWidths];
     if (hasText(card.imageCaptions)) out.imageCaptions = [...card.imageCaptions];
     if (hasText(card.imageCaptions) || hasNonDefaultAlign(card.imageCaptionAligns)) {
       out.imageCaptionAligns = [...card.imageCaptionAligns];
@@ -537,6 +954,7 @@ function toPayloadCard(card) {
     if (card.caption.trim()) out.caption = card.caption.trim();
   } else {
     if (card.image.trim()) out.image = card.image.trim();
+    if (Number.isFinite(card.imageWidth)) out.imageWidth = card.imageWidth;
     if (card.imageCaption.trim()) out.imageCaption = card.imageCaption.trim();
     if (
       card.imageCaption.trim() ||
@@ -725,6 +1143,425 @@ function openConfirmModal(options = {}) {
   });
 }
 
+function setConfigFeedback(text = "", tone = "") {
+  const node = id("config_feedback");
+  if (!node) return;
+  node.textContent = text;
+  node.classList.remove("is-ok", "is-error");
+  if (tone === "ok") node.classList.add("is-ok");
+  if (tone === "error") node.classList.add("is-error");
+}
+
+function collectConfigForm() {
+  const preset = PROVIDER_PRESETS[state.appConfig.providerKey] || {};
+  const fromEmail = configValueOf("from_email").trim();
+  const host = configValueOf("smtp_host").trim() || preset.host || "";
+  const port = configValueOf("smtp_port").trim() || preset.port || "587";
+  const smtpUser = configValueOf("smtp_user").trim() || fromEmail;
+
+  return {
+    smtpHost: host,
+    smtpPort: port,
+    smtpUser,
+    smtpPass: configValueOf("smtp_pass"),
+    fromEmail,
+    fromName: configValueOf("from_name").trim(),
+    testTo: configValueOf("test_to").trim(),
+  };
+}
+
+function hasConfigPassword(formValues = collectConfigForm()) {
+  return Boolean(
+    String(formValues.smtpPass || "").trim() ||
+      state.appConfig.values?.hasPassword
+  );
+}
+
+function isConfigFormComplete(formValues = collectConfigForm()) {
+  return Boolean(
+    formValues.smtpHost &&
+      formValues.smtpPort &&
+      formValues.smtpUser &&
+      formValues.fromEmail &&
+      hasConfigPassword(formValues)
+  );
+}
+
+function populateConfigForm(values = {}, options = {}) {
+  const { preservePassword = false } = options;
+  const providerKey = inferProviderKey(values) || state.appConfig.providerKey;
+  const preset = PROVIDER_PRESETS[providerKey] || {};
+
+  setConfigValue("smtp_host", values.smtpHost || preset.host || "");
+  setConfigValue("smtp_port", values.smtpPort || preset.port || "587");
+  setConfigValue("smtp_user", values.smtpUser || "");
+  setConfigValue("from_email", values.fromEmail || "");
+  setConfigValue("from_name", values.fromName || "FISUC Newsletter");
+  setConfigValue("test_to", values.testTo || "");
+
+  if (!preservePassword) {
+    setConfigValue("smtp_pass", "");
+  }
+}
+
+function renderProviderCards() {
+  const container = id("config_provider_cards");
+  if (!container) return;
+
+  const activeKey = state.appConfig.providerKey;
+  container.innerHTML = Object.values(PROVIDER_PRESETS)
+    .map(
+      (provider) => `
+        <button
+          type="button"
+          class="btn provider-card provider-card--${provider.tone}${provider.key === activeKey ? " is-active" : ""}"
+          data-config-provider="${provider.key}"
+          data-provider-tone="${provider.tone}"
+          aria-pressed="${provider.key === activeKey ? "true" : "false"}"
+        >
+          <div class="provider-card__logo provider-card__logo--${provider.tone}">
+            <img src="${escapeHtml(provider.iconSrc)}" alt="" />
+          </div>
+          <div class="provider-card__title">
+            <span>${escapeHtml(provider.label)}</span>
+          </div>
+          <p class="provider-card__desc">${escapeHtml(provider.description)}</p>
+          <span class="provider-card__meta">${escapeHtml(provider.meta)}</span>
+        </button>
+      `
+    )
+    .join("");
+}
+
+function renderConfigSteps() {
+  const container = id("config_setup_steps");
+  if (!container) return;
+
+  const preset = PROVIDER_PRESETS[state.appConfig.providerKey];
+  if (!preset) {
+    container.innerHTML = `
+      <div class="setup-step">
+        <span class="setup-step__index">A</span>
+        <div>
+          <h4>Elige una opción arriba</h4>
+          <p>Al seleccionar Gmail, Microsoft 365 u otro SMTP, aquí verás los pasos exactos para conseguir las credenciales.</p>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = preset.steps
+    .map(
+      (step, index) => `
+        <div class="setup-step">
+          <span class="setup-step__index">${String.fromCharCode(65 + index)}</span>
+          <div>
+            <h4>${escapeHtml(step.title)}</h4>
+            <p>${escapeHtml(step.copy)}</p>
+            ${
+              Array.isArray(step.links) && step.links.length
+                ? `
+                  <div class="setup-step__links">
+                    ${step.links
+                      .map(
+                        (link) => `
+                          <a href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer noopener">
+                            ${escapeHtml(link.label)}
+                            ${iconSvg("externalLink")}
+                          </a>
+                        `
+                      )
+                      .join("")}
+                  </div>
+                `
+                : ""
+            }
+          </div>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderConfigStepStatus() {
+  const container = id("config_step_status");
+  if (!container) return;
+
+  const providerDone = Boolean(state.appConfig.providerKey);
+  const formValues = collectConfigForm();
+  const formDone = isConfigFormComplete(formValues);
+  const readyDone = state.appConfig.isConfigured || state.appConfig.lastTestOk;
+
+  const chips = [
+    { label: "Cuenta elegida", done: providerDone },
+    { label: "Datos listos", done: formDone },
+    { label: "Conexión validada", done: readyDone },
+  ];
+
+  container.innerHTML = chips
+    .map(
+      (chip) => `
+        <span class="config-status-chip${chip.done ? " is-done" : ""}">
+          ${escapeHtml(chip.label)}
+        </span>
+      `
+    )
+    .join("");
+}
+
+function refreshPasswordNote() {
+  const note = id("config_pass_note");
+  if (!note) return;
+
+  if (state.appConfig.values?.hasPassword && !configValueOf("smtp_pass").trim()) {
+    note.textContent = "Ya hay una contraseña guardada. Escribe una nueva solo si quieres reemplazarla.";
+    return;
+  }
+
+  const providerKey = state.appConfig.providerKey;
+  if (providerKey === "gmail") {
+    note.textContent = "En Gmail normalmente aquí va la clave de aplicación de 16 caracteres, no tu clave habitual.";
+    return;
+  }
+
+  if (providerKey === "office365") {
+    note.textContent = "Si es una cuenta de empresa o institución, confirma con el administrador qué credencial debes usar aquí.";
+    return;
+  }
+
+  if (providerKey === "custom") {
+    note.textContent = "Usa la clave exacta que te entregó tu proveedor o administrador del correo.";
+    return;
+  }
+
+  note.textContent = "";
+}
+
+function refreshConfigWizard() {
+  renderProviderCards();
+  renderConfigSteps();
+  renderConfigStepStatus();
+  refreshPasswordNote();
+  syncConfigAdvancedState();
+}
+
+function setConfigProvider(providerKey, options = {}) {
+  const { autofill = true } = options;
+  const preset = PROVIDER_PRESETS[providerKey];
+  if (!preset) return;
+
+  state.appConfig.providerKey = providerKey;
+  state.appConfig.lastTestOk = false;
+
+  if (autofill) {
+    setConfigValue("smtp_host", preset.host || "");
+    setConfigValue("smtp_port", preset.port || "587");
+    if (providerKey !== "custom") {
+      setConfigValue(
+        "smtp_user",
+        configValueOf("smtp_user").trim() || configValueOf("from_email").trim()
+      );
+    }
+    if (!configValueOf("from_name").trim()) {
+      setConfigValue("from_name", "FISUC Newsletter");
+    }
+  }
+
+  setConfigFeedback("");
+  refreshConfigWizard();
+}
+
+function syncConfigAdvancedState() {
+  const advanced = id("config_advanced");
+  if (!advanced) return;
+  advanced.open = state.appConfig.providerKey === "custom";
+}
+
+function refreshConfigEntryPoint() {
+  const button = id("open_config_btn");
+  if (!button) return;
+
+  if (state.appConfig.loaded && !state.appConfig.canPersist) {
+    button.hidden = true;
+    return;
+  }
+
+  button.hidden = false;
+
+  const label = state.appConfig.isConfigured
+    ? "Configuración de envío"
+    : "Configurar envío";
+
+  button.textContent = label;
+  button.classList.toggle("danger", state.appConfig.loaded && !state.appConfig.isConfigured);
+  button.classList.toggle("subtle", !state.appConfig.loaded || state.appConfig.isConfigured);
+}
+
+function applyLoadedConfig(data = {}) {
+  state.appConfig = {
+    ...state.appConfig,
+    loaded: true,
+    loading: false,
+    loadError: "",
+    canPersist: Boolean(data.canPersist),
+    isConfigured: Boolean(data.isConfigured),
+    source: data.source || "none",
+    values: data.values || {},
+    providerKey: inferProviderKey(data.values || {}),
+    lastTestOk: Boolean(data.isConfigured),
+  };
+
+  populateConfigForm(state.appConfig.values);
+
+  if (!valueOf("test_to").trim() && state.appConfig.values?.testTo) {
+    setValue("test_to", state.appConfig.values.testTo);
+  }
+
+  refreshConfigEntryPoint();
+  refreshConfigWizard();
+  refreshSendAvailability();
+}
+
+function openConfigModal(options = {}) {
+  const { clearFeedback = false } = options;
+  const modal = id("config-modal");
+  if (!modal) return;
+  if (clearFeedback) setConfigFeedback("");
+  refreshConfigWizard();
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeConfigModal() {
+  const modal = id("config-modal");
+  if (!modal) return;
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+async function loadAppConfig() {
+  if (state.appConfig.loading) return;
+  state.appConfig.loading = true;
+  state.appConfig.loadError = "";
+  refreshSendAvailability();
+
+  try {
+    const response = await fetch("/api/app-config");
+    const data = await response.json();
+    if (!data.ok) throw new Error(data.error || "No se pudo leer la configuración");
+
+    applyLoadedConfig(data);
+
+    if (data.canPersist && !data.isConfigured) {
+      openConfigModal({ clearFeedback: true });
+      setConfigFeedback(
+        "Completa estos datos una vez y quedarán guardados en este equipo.",
+        ""
+      );
+    }
+  } catch (error) {
+    console.error(error);
+    state.appConfig = {
+      ...state.appConfig,
+      loading: false,
+      loadError: "No se pudo revisar el envío.",
+    };
+    refreshSendAvailability();
+    setPreviewStatus(error.message || "No se pudo cargar la configuración", "error");
+  }
+}
+
+async function saveAppConfig() {
+  const saveButton = id("config_save");
+  const payload = collectConfigForm();
+
+  try {
+    state.appConfig.saving = true;
+    setButtonBusy(saveButton, true, "Guardando...");
+    setConfigFeedback("Guardando configuración...", "");
+
+    const response = await fetch("/api/app-config", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!data.ok) throw new Error(data.error || "No se pudo guardar la configuración");
+
+    applyLoadedConfig({
+      ...data,
+      canPersist: true,
+    });
+    state.appConfig.lastTestOk = true;
+    setConfigFeedback("Configuración guardada en este equipo.", "ok");
+    closeConfigModal();
+    setPreviewStatus("Configuración de envío lista", "ok");
+    refreshSendAvailability();
+  } catch (error) {
+    console.error(error);
+    setConfigFeedback(error.message || "No se pudo guardar la configuración.", "error");
+  } finally {
+    state.appConfig.saving = false;
+    setButtonBusy(saveButton, false);
+  }
+}
+
+async function testAppConfig() {
+  const testButton = id("config_test");
+  const payload = collectConfigForm();
+
+  try {
+    state.appConfig.testing = true;
+    setButtonBusy(testButton, true, "Probando...");
+    setConfigFeedback("Probando conexión SMTP...", "");
+
+    const response = await fetch("/api/app-config/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!data.ok) throw new Error(data.error || "No se pudo validar la conexión");
+
+    state.appConfig.lastTestOk = true;
+    refreshConfigWizard();
+    setConfigFeedback("Conexión SMTP válida.", "ok");
+  } catch (error) {
+    console.error(error);
+    state.appConfig.lastTestOk = false;
+    refreshConfigWizard();
+    setConfigFeedback(error.message || "No se pudo validar la conexión.", "error");
+  } finally {
+    state.appConfig.testing = false;
+    setButtonBusy(testButton, false);
+  }
+}
+
+function ensureConfigBeforeSend() {
+  if (state.appConfig.isConfigured) return true;
+
+  if (state.appConfig.loading || !state.appConfig.loaded) {
+    setPreviewStatus("Revisando configuración de envío...", "warn");
+    refreshSendAvailability();
+    return false;
+  }
+
+  if (!state.appConfig.canPersist) {
+    setPreviewStatus("El envío todavía no está disponible en esta sesión.", "warn");
+    refreshSendAvailability();
+    return false;
+  }
+
+  openConfigModal({ clearFeedback: false });
+  setConfigFeedback(
+    "Completa y guarda la configuración antes de enviar una prueba.",
+    "error"
+  );
+  refreshSendAvailability();
+  return false;
+}
+
 function syncJsonPanel() {
   const field = id("cards_json");
   if (!field) return;
@@ -748,9 +1585,37 @@ function safeNumber(value, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function imagePreview(url, label) {
+function imagePreview(url, label, previewMeta = {}, options = {}) {
+  const { cardId = "", slot = "", selected = false } = options;
   if (url) {
-    return `<img src="${escapeHtml(url)}" alt="${escapeHtml(label)}" />`;
+    return `
+      <div class="image-slot__canvas">
+        <div
+          class="image-slot__media${selected ? " is-selected" : ""}"
+          data-resizable-media
+          data-select-image
+          data-card-id="${escapeHtml(cardId)}"
+          data-slot="${escapeHtml(normalizeSlotKey(slot))}"
+          role="button"
+          tabindex="0"
+          aria-pressed="${selected ? "true" : "false"}"
+          style="width:${clamp(safeNumber(previewMeta.widthPercent, 100), 20, 100)}%;"
+        >
+          <img
+            src="${escapeHtml(url)}"
+            alt="${escapeHtml(label)}"
+            draggable="false"
+          />
+          <span class="image-resize-handle image-resize-handle--nw" data-resize-handle="nw" aria-hidden="true"></span>
+          <span class="image-resize-handle image-resize-handle--ne" data-resize-handle="ne" aria-hidden="true"></span>
+          <span class="image-resize-handle image-resize-handle--sw" data-resize-handle="sw" aria-hidden="true"></span>
+          <span class="image-resize-handle image-resize-handle--se" data-resize-handle="se" aria-hidden="true"></span>
+        </div>
+        <span class="image-slot__size-chip" data-size-label>
+          ${escapeHtml(previewMeta.sizeLabel || "")}
+        </span>
+      </div>
+    `;
   }
   return `<div class="image-slot__empty">${escapeHtml(label)}</div>`;
 }
@@ -833,6 +1698,31 @@ function iconSvg(name) {
         <path d="m6 6 8 8" />
         <path d="m14 6-8 8" />
         <circle cx="10" cy="10" r="7" />
+      </svg>
+    `,
+    resetSize: `
+      <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+        <path d="M5 10a5 5 0 1 0 1.3-3.35" />
+        <path d="M5.2 4.9v2.9H8.1" />
+      </svg>
+    `,
+    resize: `
+      <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+        <path d="M7 3.5H3.5V7" />
+        <path d="M13 3.5h3.5V7" />
+        <path d="M7 16.5H3.5V13" />
+        <path d="M13 16.5h3.5V13" />
+        <path d="M3.5 3.5 8 8" />
+        <path d="m16.5 3.5-4.5 4.5" />
+        <path d="m3.5 16.5 4.5-4.5" />
+        <path d="m16.5 16.5-4.5-4.5" />
+      </svg>
+    `,
+    externalLink: `
+      <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+        <path d="M11 4h5v5" />
+        <path d="M9 11 16 4" />
+        <path d="M8 5H6.25A2.25 2.25 0 0 0 4 7.25v6.5A2.25 2.25 0 0 0 6.25 16h6.5A2.25 2.25 0 0 0 15 13.75V12" />
       </svg>
     `,
   };
@@ -924,7 +1814,7 @@ function renderImageCaptionEditor(text, align, options = {}) {
   `;
 }
 
-function renderImageSlot(cardId, slot, url, label, options = {}) {
+function renderImageSlot(card, slot, url, label, options = {}) {
   const {
     caption = "",
     captionAlign = "center",
@@ -934,11 +1824,26 @@ function renderImageSlot(cardId, slot, url, label, options = {}) {
     captionLabel = "Pie",
     captionPlaceholder = "Pie de imagen",
   } = options;
+  const previewMeta = getCardImagePreviewMeta(card, slot);
+  const selected = isImageSelected(card.id, slot);
   return `
     <div class="image-slot" data-slot-wrap="${slot}">
       <div class="image-slot__preview" data-preview-slot="${slot}">
-        ${imagePreview(url, label)}
+        ${imagePreview(url, label, previewMeta, {
+          cardId: card.id,
+          slot,
+          selected,
+        })}
       </div>
+      ${
+        url
+          ? `<p class="image-slot__hint" data-image-hint data-card-id="${escapeHtml(card.id)}" data-slot="${escapeHtml(normalizeSlotKey(slot))}">${
+              selected
+                ? "Arrastra una esquina o usa el botón de tamaño para abrir el editor grande sin modificar la imagen original."
+                : "Haz click en la imagen para seleccionarla o usa el botón de tamaño para abrir el editor grande."
+            }</p>`
+          : ""
+      }
       ${
         allowCaption
           ? renderImageCaptionEditor(caption, captionAlign, {
@@ -962,7 +1867,9 @@ function renderImageSlot(cardId, slot, url, label, options = {}) {
       <div class="image-slot__actions">
         ${renderImageActionButton("upload-image", slot, "upload", "Subir imagen", "image-action-btn--upload")}
         ${renderImageActionButton("pick-image", slot, "library", "Elegir desde biblioteca", "image-action-btn--library")}
-        ${renderImageActionButton("edit-image", slot, "crop", "Recortar y escalar", "image-action-btn--edit", !url)}
+        ${renderImageActionButton("resize-image", slot, "resize", "Cambiar tamaño", "image-action-btn--resize", !url)}
+        ${renderImageActionButton("edit-image", slot, "crop", "Recortar imagen", "image-action-btn--edit", !url)}
+        ${renderImageActionButton("reset-image-size", slot, "resetSize", "Restablecer tamaño", "image-action-btn--reset", !url)}
         ${renderImageActionButton("clear-image", slot, "clear", "Quitar imagen", "image-action-btn--clear")}
       </div>
     </div>
@@ -1033,7 +1940,7 @@ function renderBlock(card, index) {
           ? `
             <div class="field">
               <label>Imagen destacada</label>
-              ${renderImageSlot(card.id, "image", card.image, "Imagen destacada", {
+              ${renderImageSlot(card, "image", card.image, "Imagen destacada", {
                 allowCaption: true,
                 caption: card.imageCaption,
                 captionAlign: card.imageCaptionAlign,
@@ -1051,14 +1958,14 @@ function renderBlock(card, index) {
             <div class="field">
               <label>Galería</label>
               <div class="image-grid">
-                ${renderImageSlot(card.id, 0, card.images[0], "Imagen 1", {
+                ${renderImageSlot(card, 0, card.images[0], "Imagen 1", {
                   allowCaption: true,
                   caption: card.imageCaptions[0],
                   captionAlign: card.imageCaptionAligns[0],
                   captionField: "imageCaptions.0",
                   captionAlignField: "imageCaptionAligns.0",
                 })}
-                ${renderImageSlot(card.id, 1, card.images[1], "Imagen 2", {
+                ${renderImageSlot(card, 1, card.images[1], "Imagen 2", {
                   allowCaption: true,
                   caption: card.imageCaptions[1],
                   captionAlign: card.imageCaptionAligns[1],
@@ -1412,6 +2319,198 @@ async function applyImageEditor() {
   }
 }
 
+function getImageSizeEditorHeight(width = state.imageSizeEditor.currentWidth) {
+  const editor = state.imageSizeEditor;
+  if (!editor.image || !width) return 0;
+
+  const naturalWidth = editor.image.naturalWidth || editor.image.width || 1;
+  const naturalHeight = editor.image.naturalHeight || editor.image.height || 1;
+  return Math.round((width / naturalWidth) * naturalHeight);
+}
+
+function renderImageSizeEditor() {
+  const editor = state.imageSizeEditor;
+  const media = id("image_size_media");
+  const preview = id("image_size_preview");
+  if (!media || !preview || !editor.image) return;
+
+  preview.src = editor.image.src;
+  preview.alt = editor.imageName || "Vista previa";
+  media.style.width = `${(editor.currentWidth / editor.maxWidth) * 100}%`;
+}
+
+function syncImageSizeEditorControls() {
+  const editor = state.imageSizeEditor;
+  const widthInput = id("image_size_width");
+  const range = id("image_size_range");
+  const rangeLabel = id("image_size_range_label");
+  const source = id("image_size_source");
+  const heightLabel = id("image_size_height_label");
+  const original = id("image_size_original");
+  const limit = id("image_size_limit");
+
+  if (widthInput) {
+    widthInput.min = String(editor.minWidth);
+    widthInput.max = String(editor.maxWidth);
+    widthInput.value = String(editor.currentWidth);
+  }
+
+  if (range) {
+    range.min = String(editor.minWidth);
+    range.max = String(editor.maxWidth);
+    range.value = String(editor.currentWidth);
+  }
+
+  if (rangeLabel) {
+    rangeLabel.textContent = `${Math.round((editor.currentWidth / editor.maxWidth) * 100)}% del máximo`;
+  }
+
+  if (source) {
+    source.textContent = editor.imageName || editor.imageUrl || "Imagen seleccionada";
+  }
+
+  if (heightLabel) {
+    heightLabel.textContent = `${getImageSizeEditorHeight()} px`;
+  }
+
+  if (original && editor.image) {
+    const originalWidth = editor.image.naturalWidth || editor.image.width || 0;
+    const originalHeight = editor.image.naturalHeight || editor.image.height || 0;
+    original.textContent = `${originalWidth} x ${originalHeight} px`;
+  }
+
+  if (limit) {
+    limit.textContent = `${editor.maxWidth} px`;
+  }
+
+  renderImageSizeEditor();
+}
+
+function closeImageSizeEditor() {
+  const editor = state.imageSizeEditor;
+  editor.open = false;
+  editor.dragPointerId = null;
+  id("image-size-modal")?.classList.add("hidden");
+}
+
+async function openImageSizeEditor(cardId, slot) {
+  const card = state.cards.find((entry) => entry.id === cardId);
+  if (!card) return;
+
+  const normalizedSlot = slot === "image" ? "image" : Number(slot);
+  const url =
+    normalizedSlot === "image"
+      ? card.image
+      : card.images?.[Number(normalizedSlot)] || "";
+
+  if (!url) {
+    alert("Primero asigna una imagen para poder ajustar su tamaño.");
+    return;
+  }
+
+  try {
+    setPreviewStatus("Abriendo editor de tamaño...", "ok");
+    const image = await createEditableImage(url);
+    const editor = state.imageSizeEditor;
+    editor.cardId = cardId;
+    editor.slot = normalizedSlot;
+    editor.imageUrl = url;
+    editor.imageName = fileNameFromUrl(url) || "imagen";
+    editor.image = image;
+    editor.minWidth = getCardImageMinWidth(card, normalizedSlot);
+    editor.maxWidth = getCardImageMaxWidth(card, normalizedSlot);
+    editor.currentWidth = getCardImageEffectiveWidth(card, normalizedSlot);
+
+    id("image-size-modal")?.classList.remove("hidden");
+    editor.open = true;
+    window.requestAnimationFrame(() => {
+      syncImageSizeEditorControls();
+    });
+    setPreviewStatus("Editor de tamaño listo", "ok");
+  } catch (error) {
+    console.error(error);
+    setPreviewStatus(error.message || "No se pudo abrir el editor", "error");
+    alert(error.message || "No se pudo abrir el editor de tamaño");
+  }
+}
+
+function resetImageSizeEditor() {
+  const editor = state.imageSizeEditor;
+  editor.currentWidth = editor.maxWidth;
+  syncImageSizeEditorControls();
+}
+
+function applyImageSizeEditorWidth(rawWidth) {
+  const editor = state.imageSizeEditor;
+  editor.currentWidth = Math.round(
+    clamp(safeNumber(rawWidth, editor.maxWidth), editor.minWidth, editor.maxWidth)
+  );
+  syncImageSizeEditorControls();
+}
+
+function applyImageSizeEditor() {
+  const editor = state.imageSizeEditor;
+  if (!editor.cardId) return;
+
+  updateCard(editor.cardId, (card) =>
+    setCardImageWidth(card, editor.slot, editor.currentWidth)
+  );
+  setSelectedImage(editor.cardId, editor.slot);
+  renderBlocksList();
+  commit({ scheduleOnly: true });
+  closeImageSizeEditor();
+  setPreviewStatus("Tamaño de imagen aplicado", "ok");
+}
+
+function startImageSizeEditorResize(event) {
+  const handle = event.target.closest("[data-size-resize-handle]");
+  const editor = state.imageSizeEditor;
+  if (!handle || !editor.image) return;
+
+  const media = id("image_size_media");
+  const rect = media?.getBoundingClientRect();
+  if (!rect) return;
+
+  editor.dragPointerId = event.pointerId;
+  editor.startWidth = editor.currentWidth;
+  editor.centerX = rect.left + rect.width / 2;
+  editor.centerY = rect.top + rect.height / 2;
+  editor.startDistance = Math.max(
+    Math.hypot(event.clientX - editor.centerX, event.clientY - editor.centerY),
+    1
+  );
+
+  media?.setPointerCapture?.(event.pointerId);
+  event.preventDefault();
+}
+
+function moveImageSizeEditorResize(event) {
+  const editor = state.imageSizeEditor;
+  if (editor.dragPointerId !== event.pointerId) return;
+
+  const distance = Math.max(
+    Math.hypot(event.clientX - editor.centerX, event.clientY - editor.centerY),
+    1
+  );
+
+  applyImageSizeEditorWidth(
+    editor.startWidth * (distance / editor.startDistance)
+  );
+  event.preventDefault();
+}
+
+function stopImageSizeEditorResize(event) {
+  const editor = state.imageSizeEditor;
+  if (editor.dragPointerId !== event.pointerId) return;
+
+  const media = id("image_size_media");
+  if (media?.hasPointerCapture?.(event.pointerId)) {
+    media.releasePointerCapture(event.pointerId);
+  }
+
+  editor.dragPointerId = null;
+}
+
 function renderBlocksList() {
   const container = id("blocks_list");
   const empty = id("blocks_empty");
@@ -1420,6 +2519,7 @@ function renderBlocksList() {
   empty.style.display = state.cards.length ? "none" : "block";
   container.innerHTML = state.cards.map((card, index) => renderBlock(card, index)).join("");
   autosizeTextareas(container);
+  syncImageSelectionUi(container);
 }
 
 function autosizeTextareas(root = document) {
@@ -1589,6 +2689,11 @@ async function sendTest() {
   const sendUi = getSendButtonUi();
 
   try {
+    if (!ensureConfigBeforeSend()) {
+      setPreviewStatus("Falta la configuración de envío", "warn");
+      return;
+    }
+
     const svgIssues = getSvgAssetIssues();
     if (svgIssues.length) {
       sendUi?.error("Revisa imágenes");
@@ -1816,6 +2921,7 @@ function assignImage(cardId, slot, url) {
     return next;
   });
 
+  setSelectedImage(cardId, slot);
   renderBlocksList();
   commit({ scheduleOnly: true });
 }
@@ -1832,6 +2938,10 @@ function clearImage(cardId, slot) {
     return next;
   });
 
+  if (isImageSelected(cardId, slot)) {
+    state.selectedImage.cardId = null;
+    state.selectedImage.slot = null;
+  }
   renderBlocksList();
   commit({ scheduleOnly: true });
 }
@@ -1863,16 +2973,164 @@ async function handleUploadInput() {
   }
 }
 
-function updateInlinePreview(slotWrap, url, label) {
+function updateInlinePreview(slotWrap, url, label, card, slot) {
   const preview = slotWrap?.querySelector("[data-preview-slot]");
   if (!preview) return;
-  preview.innerHTML = imagePreview(url, label);
+  const selected = isImageSelected(card.id, slot);
+  preview.innerHTML = imagePreview(url, label, getCardImagePreviewMeta(card, slot), {
+    cardId: card.id,
+    slot,
+    selected,
+  });
+  const hint = slotWrap?.querySelector(".image-slot__hint");
+  if (hint) {
+    hint.style.display = url ? "block" : "none";
+    hint.textContent = selected
+      ? "Arrastra una esquina o usa el botón de tamaño para abrir el editor grande sin modificar la imagen original."
+      : "Haz click en la imagen para seleccionarla o usa el botón de tamaño para abrir el editor grande.";
+  } else if (url) {
+    const nextHint = document.createElement("p");
+    nextHint.className = "image-slot__hint";
+    nextHint.dataset.imageHint = "";
+    nextHint.dataset.cardId = card.id;
+    nextHint.dataset.slot = normalizeSlotKey(slot);
+    nextHint.textContent = selected
+      ? "Arrastra una esquina o usa el botón de tamaño para abrir el editor grande sin modificar la imagen original."
+      : "Haz click en la imagen para seleccionarla o usa el botón de tamaño para abrir el editor grande.";
+    preview.insertAdjacentElement("afterend", nextHint);
+  }
 }
 
 function labelForSlot(slot) {
   return slot === "image"
     ? "Imagen destacada"
     : `Imagen ${Number(slot) + 1}`;
+}
+
+function applyImagePreviewWidth(slotWrap, width, maxWidth) {
+  const media = slotWrap?.querySelector("[data-resizable-media]");
+  const label = slotWrap?.querySelector("[data-size-label]");
+  if (!media || !label) return;
+
+  media.style.width = `${(width / maxWidth) * 100}%`;
+  label.textContent = width >= maxWidth ? `Auto (${maxWidth}px)` : `${width}px`;
+}
+
+function stopImageResize() {
+  const resize = state.imageResize;
+  if (resize.slotWrap) {
+    resize.slotWrap
+      .querySelector("[data-resizable-media]")
+      ?.classList.remove("is-resizing");
+  }
+
+  Object.assign(resize, {
+    active: false,
+    pointerId: null,
+    cardId: null,
+    slot: null,
+    slotWrap: null,
+    startWidth: 0,
+    currentWidth: 0,
+    minWidth: 0,
+    maxWidth: 0,
+    centerX: 0,
+    centerY: 0,
+    startDistance: 1,
+  });
+}
+
+function commitImageResize() {
+  const resize = state.imageResize;
+  if (!resize.active || !resize.cardId) {
+    stopImageResize();
+    return;
+  }
+
+  updateCard(resize.cardId, (card) => setCardImageWidth(card, resize.slot, resize.currentWidth));
+  commit({ scheduleOnly: true });
+  stopImageResize();
+}
+
+function handleImageSelectionClick(event) {
+  if (event.target.closest("[data-resize-handle]")) return;
+
+  const media = event.target.closest("[data-select-image]");
+  if (!media) return;
+
+  setSelectedImage(media.dataset.cardId, media.dataset.slot);
+}
+
+function handleImageResizeStart(event) {
+  const handle = event.target.closest("[data-resize-handle]");
+  if (!handle) return false;
+
+  const slotWrap = handle.closest("[data-slot-wrap]");
+  const cardElement = handle.closest("[data-card-id]");
+  const cardId = cardElement?.dataset.cardId;
+  if (!slotWrap || !cardId) return false;
+
+  const slotValue = slotWrap.dataset.slotWrap;
+  const slot = slotValue === "image" ? "image" : Number(slotValue);
+  if (!isImageSelected(cardId, slot)) return false;
+  const card = state.cards.find((entry) => entry.id === cardId);
+  if (!card) return false;
+
+  const maxWidth = getCardImageMaxWidth(card, slot);
+  const minWidth = getCardImageMinWidth(card, slot);
+  const currentWidth = getCardImageEffectiveWidth(card, slot);
+  const media = slotWrap.querySelector("[data-resizable-media]");
+  const rect = media?.getBoundingClientRect();
+  if (!rect) return false;
+
+  Object.assign(state.imageResize, {
+    active: true,
+    pointerId: event.pointerId,
+    cardId,
+    slot,
+    slotWrap,
+    startWidth: currentWidth,
+    currentWidth,
+    minWidth,
+    maxWidth,
+    centerX: rect.left + rect.width / 2,
+    centerY: rect.top + rect.height / 2,
+    startDistance: Math.max(
+      Math.hypot(event.clientX - (rect.left + rect.width / 2), event.clientY - (rect.top + rect.height / 2)),
+      1
+    ),
+  });
+
+  media.classList.add("is-resizing");
+  event.preventDefault();
+  return true;
+}
+
+function handleImageResizeMove(event) {
+  const resize = state.imageResize;
+  if (!resize.active || resize.pointerId !== event.pointerId) return;
+
+  const distance = Math.max(
+    Math.hypot(event.clientX - resize.centerX, event.clientY - resize.centerY),
+    1
+  );
+  const nextWidth = Math.round(
+    clamp(
+      resize.startWidth * (distance / resize.startDistance),
+      resize.minWidth,
+      resize.maxWidth
+    )
+  );
+
+  resize.currentWidth = nextWidth;
+  applyImagePreviewWidth(resize.slotWrap, nextWidth, resize.maxWidth);
+  event.preventDefault();
+}
+
+function handleImageResizeEnd(event) {
+  const resize = state.imageResize;
+  if (!resize.active || resize.pointerId !== event.pointerId) return;
+  commitImageResize();
 }
 
 function handleBlockFieldInput(event) {
@@ -1916,7 +3174,16 @@ function handleBlockFieldInput(event) {
   if (field === "image" || field.startsWith("images.")) {
     const slot = field === "image" ? "image" : Number(field.split(".")[1]);
     const slotWrap = target.closest("[data-slot-wrap]");
-    updateInlinePreview(slotWrap, value.trim(), labelForSlot(slot));
+    const currentCard = state.cards.find((card) => card.id === cardId);
+    if (!value.trim() && isImageSelected(cardId, slot)) {
+      state.selectedImage.cardId = null;
+      state.selectedImage.slot = null;
+    }
+    updateInlinePreview(slotWrap, value.trim(), labelForSlot(slot), currentCard, slot);
+    const resetButton = slotWrap?.querySelector('[data-action="reset-image-size"]');
+    if (resetButton) resetButton.disabled = !value.trim();
+    const resizeButton = slotWrap?.querySelector('[data-action="resize-image"]');
+    if (resizeButton) resizeButton.disabled = !value.trim();
     const editButton = slotWrap?.querySelector('[data-action="edit-image"]');
     if (editButton) editButton.disabled = !value.trim();
   }
@@ -1998,8 +3265,21 @@ function handleBlockActions(event) {
     return;
   }
 
+  if (action === "resize-image") {
+    openImageSizeEditor(cardId, actionButton.dataset.slot);
+    return;
+  }
+
   if (action === "edit-image") {
     openImageEditor(cardId, actionButton.dataset.slot);
+    return;
+  }
+
+  if (action === "reset-image-size") {
+    const slot = actionButton.dataset.slot;
+    updateCard(cardId, (card) => setCardImageWidth(card, slot === "image" ? "image" : Number(slot), null));
+    renderBlocksList();
+    commit({ scheduleOnly: true });
     return;
   }
 
@@ -2173,6 +3453,41 @@ function bindImageEditorControls() {
   });
 }
 
+function bindImageSizeEditorControls() {
+  const editor = state.imageSizeEditor;
+  const width = id("image_size_width");
+  const range = id("image_size_range");
+  const media = id("image_size_media");
+
+  id("image_size_close")?.addEventListener("click", closeImageSizeEditor);
+  document
+    .querySelector("#image-size-modal .media-backdrop")
+    ?.addEventListener("click", closeImageSizeEditor);
+  id("image_size_reset")?.addEventListener("click", resetImageSizeEditor);
+  id("image_size_apply")?.addEventListener("click", applyImageSizeEditor);
+
+  width?.addEventListener("input", () => applyImageSizeEditorWidth(width.value));
+  width?.addEventListener("change", () => applyImageSizeEditorWidth(width.value));
+  range?.addEventListener("input", () => applyImageSizeEditorWidth(range.value));
+
+  media?.addEventListener("pointerdown", startImageSizeEditorResize);
+  media?.addEventListener("pointermove", moveImageSizeEditorResize);
+  media?.addEventListener("pointerup", stopImageSizeEditorResize);
+  media?.addEventListener("pointercancel", stopImageSizeEditorResize);
+
+  window.addEventListener("resize", () => {
+    if (editor.open) renderImageSizeEditor();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    const modal = id("image-size-modal");
+    if (modal && !modal.classList.contains("hidden")) {
+      closeImageSizeEditor();
+    }
+  });
+}
+
 function bindFormFields() {
   FIELD_IDS.forEach((fieldId) => {
     const field = id(fieldId);
@@ -2208,6 +3523,24 @@ function bindBlockControls() {
   const blocks = id("blocks_list");
   blocks?.addEventListener("input", handleBlockFieldInput);
   blocks?.addEventListener("click", handleBlockActions);
+  blocks?.addEventListener("click", handleImageSelectionClick);
+  blocks?.addEventListener("pointerdown", (event) => {
+    handleImageResizeStart(event);
+  });
+
+  window.addEventListener("pointermove", handleImageResizeMove);
+  window.addEventListener("pointerup", handleImageResizeEnd);
+  window.addEventListener("pointercancel", () => stopImageResize());
+  document.addEventListener("pointerdown", (event) => {
+    if (state.imageResize.active) return;
+    if (
+      event.target.closest("[data-select-image]") ||
+      event.target.closest("[data-resize-handle]")
+    ) {
+      return;
+    }
+    clearSelectedImage();
+  });
 }
 
 function bindAssetControls() {
@@ -2253,6 +3586,56 @@ function bindConfirmModal() {
     const modal = id("confirm-modal");
     if (modal && !modal.classList.contains("hidden")) {
       closeConfirmModal(false);
+    }
+  });
+}
+
+function bindConfigControls() {
+  id("open_config_btn")?.addEventListener("click", () => {
+    populateConfigForm(state.appConfig.values, { preservePassword: false });
+    setConfigFeedback(
+      state.appConfig.isConfigured
+        ? "Puedes actualizar los datos y guardar de nuevo."
+        : "Completa los datos para dejar el envío listo en este equipo.",
+      ""
+    );
+    openConfigModal();
+  });
+
+  id("config_provider_cards")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-config-provider]");
+    if (!button) return;
+    setConfigProvider(button.dataset.configProvider, { autofill: true });
+  });
+
+  CONFIG_FIELD_IDS.forEach((fieldId) => {
+    const field = id(fieldId);
+    if (!field) return;
+    field.addEventListener("input", () => {
+      state.appConfig.lastTestOk = false;
+      if (fieldId === "config_smtp_host") {
+        const inferred = inferProviderKey({ smtpHost: field.value });
+        if (inferred && state.appConfig.providerKey !== inferred) {
+          state.appConfig.providerKey = inferred;
+        }
+      }
+      refreshConfigWizard();
+    });
+  });
+
+  id("config_close")?.addEventListener("click", closeConfigModal);
+  id("config_cancel")?.addEventListener("click", closeConfigModal);
+  id("config_test")?.addEventListener("click", testAppConfig);
+  id("config_save")?.addEventListener("click", saveAppConfig);
+  document
+    .querySelector("#config-modal .media-backdrop")
+    ?.addEventListener("click", closeConfigModal);
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    const modal = id("config-modal");
+    if (modal && !modal.classList.contains("hidden")) {
+      closeConfigModal();
     }
   });
 }
@@ -2330,7 +3713,7 @@ function bindAccordionBehavior() {
   });
 }
 
-function init() {
+async function init() {
   window.addEventListener("error", (event) => {
     setPreviewStatus(event.message || "Error de JavaScript", "error");
   });
@@ -2350,7 +3733,9 @@ function init() {
   bindBlockControls();
   bindAssetControls();
   bindConfirmModal();
+  bindConfigControls();
   bindImageEditorControls();
+  bindImageSizeEditorControls();
   bindAdvancedControls();
   bindAccordionBehavior();
 
@@ -2376,6 +3761,9 @@ function init() {
 
   togglePreviewView(state.currentView);
   autosizeTextareas();
+  refreshConfigEntryPoint();
+  refreshSendAvailability();
+  await loadAppConfig();
 }
 
 if (document.readyState === "loading") {

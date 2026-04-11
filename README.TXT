@@ -26,6 +26,7 @@ Modo app de escritorio:
    npm run desktop:make
 
 Notas:
-- Configurar SMTP en .env.
+- En modo web local, el envio sigue leyendo SMTP desde .env.
+- En modo app de escritorio, la primera vez se abre una configuracion guiada para SMTP y remitente. Esa configuracion se guarda solo en el equipo del usuario.
 - En modo escritorio empaquetado, las imagenes subidas se guardan fuera del bundle, en la carpeta de datos del usuario.
 - El paquete generado depende de la plataforma donde se construye. Para crear un paquete nativo de Windows, compilar en Windows; para macOS, compilar en macOS.

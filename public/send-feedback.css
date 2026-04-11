@@ -158,6 +158,28 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
+.send-action-btn.is-blocked {
+  --send-accent: #8a97a7;
+  --send-accent-strong: #748295;
+  box-shadow:
+    0 10px 22px rgba(116, 130, 149, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.send-action-btn.is-blocked:hover {
+  box-shadow:
+    0 10px 22px rgba(116, 130, 149, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.send-action-btn.is-blocked:disabled {
+  cursor: not-allowed;
+}
+
+.send-action-btn.is-blocked .send-action-btn__icon {
+  opacity: 0.84;
+}
+
 @keyframes send-feedback-spin {
   from {
     transform: rotate(0deg);

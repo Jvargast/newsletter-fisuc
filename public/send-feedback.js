@@ -35,6 +35,8 @@
       "Enviar prueba";
     var labelNode = null;
     var resetTimer = null;
+    var isLocked = false;
+    var lockedLabel = idleLabel;
 
     function clearTimer() {
       if (resetTimer) {
@@ -54,13 +56,11 @@
       ensureMarkup();
       clearTimer();
 
-      button.classList.remove("is-sending", "is-success", "is-error");
-      button.disabled = false;
+      button.classList.remove("is-sending", "is-success", "is-error", "is-blocked");
       button.removeAttribute("aria-busy");
 
       if (nextState === "sending") {
         button.classList.add("is-sending");
-        button.disabled = true;
         button.setAttribute("aria-busy", "true");
       } else if (nextState === "success") {
         button.classList.add("is-success");
@@ -68,7 +68,12 @@
         button.classList.add("is-error");
       }
 
-      labelNode.textContent = label || idleLabel;
+      if (isLocked && nextState !== "sending") {
+        button.classList.add("is-blocked");
+      }
+
+      button.disabled = nextState === "sending" || isLocked;
+      labelNode.textContent = label || (isLocked ? lockedLabel : idleLabel);
 
       if (autoResetMs) {
         resetTimer = window.setTimeout(function () {
@@ -79,6 +84,8 @@
 
     var controller = {
       start: function (label) {
+        isLocked = false;
+        lockedLabel = idleLabel;
         setState("sending", label || "Enviando");
       },
       success: function (label, autoResetMs) {
@@ -88,6 +95,16 @@
         setState("error", label || "Reintentar", autoResetMs || 2600);
       },
       reset: function (label) {
+        setState("idle", label || idleLabel);
+      },
+      lock: function (label) {
+        isLocked = true;
+        lockedLabel = label || idleLabel;
+        setState("idle", lockedLabel);
+      },
+      unlock: function (label) {
+        isLocked = false;
+        lockedLabel = idleLabel;
         setState("idle", label || idleLabel);
       },
     };

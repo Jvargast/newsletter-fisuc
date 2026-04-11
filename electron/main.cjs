@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog } = require("electron");
+const { app, BrowserWindow, dialog, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
 
@@ -30,6 +30,7 @@ async function ensureServer() {
 
   const rootDir = getAppRoot();
   const uploadsDir = path.join(app.getPath("userData"), "uploads");
+  const configPath = path.join(app.getPath("userData"), "settings.json");
   const envPath = resolveEnvPath(rootDir);
 
   startupPromise = import(path.join(rootDir, "server.mjs"))
@@ -37,6 +38,7 @@ async function ensureServer() {
       serverModule.startServer({
         rootDir,
         uploadsDir,
+        configPath,
         envPath,
         host: "127.0.0.1",
         port: 0,
@@ -58,6 +60,7 @@ async function ensureServer() {
 
 async function createMainWindow() {
   const server = await ensureServer();
+  const allowedOrigin = new URL(server.url).origin;
 
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.focus();
@@ -85,6 +88,21 @@ async function createMainWindow() {
 
   mainWindow.on("closed", () => {
     mainWindow = null;
+  });
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith(allowedOrigin)) {
+      return { action: "allow" };
+    }
+
+    shell.openExternal(url);
+    return { action: "deny" };
+  });
+
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    if (url.startsWith(allowedOrigin)) return;
+    event.preventDefault();
+    shell.openExternal(url);
   });
 
   await mainWindow.loadURL(server.url);
