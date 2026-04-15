@@ -15,6 +15,9 @@ import { fileURLToPath } from "url";
 const MODULE_FILE = fileURLToPath(import.meta.url);
 const MODULE_DIR = path.dirname(MODULE_FILE);
 const DEFAULT_FROM_NAME = "FISUC Newsletter";
+const DEFAULT_BROADCAST_BATCH_SIZE = 200;
+const MAX_BROADCAST_BATCH_SIZE = 500;
+const BROADCAST_BATCH_PAUSE_MS = 2200;
 
 function toCleanString(value = "") {
   return sanitizeHeaderText(String(value ?? ""));
@@ -40,6 +43,68 @@ function normalizeMailConfig(raw = {}) {
     fromName: toCleanString(raw.fromName || DEFAULT_FROM_NAME),
     testTo: toCleanString(raw.testTo),
   };
+}
+
+function normalizeEmailAddress(value = "") {
+  return sanitizeHeaderText(String(value ?? "")).trim().toLowerCase();
+}
+
+function isValidEmailAddress(value = "") {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(normalizeEmailAddress(value));
+}
+
+function normalizeRecipientList(raw = []) {
+  const values = Array.isArray(raw) ? raw : [raw];
+  const seen = new Set();
+  const recipients = [];
+  const invalid = [];
+
+  values.forEach((entry) => {
+    const text = String(entry ?? "");
+    const matches =
+      text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ||
+      text.split(/[,\n;]+/g);
+
+    matches.forEach((candidate) => {
+      const email = normalizeEmailAddress(candidate);
+      if (!email) return;
+      if (!isValidEmailAddress(email)) {
+        invalid.push(email);
+        return;
+      }
+      if (seen.has(email)) return;
+      seen.add(email);
+      recipients.push(email);
+    });
+  });
+
+  return { recipients, invalid };
+}
+
+function normalizeBroadcastBatchSize(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_BROADCAST_BATCH_SIZE;
+  }
+
+  return Math.min(Math.round(parsed), MAX_BROADCAST_BATCH_SIZE);
+}
+
+function chunkRecipients(recipients = [], batchSize = DEFAULT_BROADCAST_BATCH_SIZE) {
+  const size = normalizeBroadcastBatchSize(batchSize);
+  const batches = [];
+
+  for (let index = 0; index < recipients.length; index += size) {
+    batches.push(recipients.slice(index, index + size));
+  }
+
+  return batches;
+}
+
+function wait(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 function getEnvMailConfig() {
@@ -516,19 +581,46 @@ export function createNewsletterApp(options = {}) {
       }
 
       const transporter = createMailTransport(mailConfig);
-      const targetEmail = to || mailConfig.testTo;
+      const requestedMode = toCleanString(req.body?.delivery?.mode || "");
+      const explicitRecipients = normalizeRecipientList(
+        req.body?.delivery?.recipients || req.body?.delivery?.to || to
+      );
 
-      if (!targetEmail) {
+      if (explicitRecipients.invalid.length) {
         return res.status(400).json({
           ok: false,
-          error:
-            "Falta el correo de destino para la prueba. Completa uno en la app o en la configuración.",
+          error: `Hay correos con formato inválido: ${explicitRecipients.invalid.join(", ")}`,
         });
       }
 
-      const info = await transporter.sendMail({
+      if (requestedMode === "broadcast" && !explicitRecipients.recipients.length) {
+        return res.status(400).json({
+          ok: false,
+          error: "Agrega al menos un destinatario para la multidifusión.",
+        });
+      }
+
+      const fallbackRecipients = normalizeRecipientList(mailConfig.testTo);
+      const recipients = explicitRecipients.recipients.length
+        ? explicitRecipients.recipients
+        : fallbackRecipients.recipients;
+      const isBroadcast =
+        requestedMode === "broadcast" || recipients.length > 1;
+      const batchSize = normalizeBroadcastBatchSize(
+        req.body?.delivery?.batchSize
+      );
+
+      if (!recipients.length) {
+        return res.status(400).json({
+          ok: false,
+          error: isBroadcast
+            ? "Falta la lista de destinatarios para la multidifusión."
+            : "Falta el correo de destino para la prueba. Completa uno en la app o en la configuración.",
+        });
+      }
+
+      const message = {
         from: `${mailConfig.fromName || DEFAULT_FROM_NAME} <${mailConfig.fromEmail}>`,
-        to: targetEmail,
         subject:
           req.body?.edition?.subject ||
           req.body?.edition?.preheader ||
@@ -537,16 +629,81 @@ export function createNewsletterApp(options = {}) {
         text,
         html,
         attachments,
+      };
+
+      if (isBroadcast) {
+        const batches = chunkRecipients(recipients, batchSize);
+        const results = [];
+        let sentRecipientCount = 0;
+
+        for (let index = 0; index < batches.length; index += 1) {
+          const batchRecipients = batches[index];
+
+          try {
+            const info = await transporter.sendMail({
+              ...message,
+              to: "undisclosed-recipients:;",
+              envelope: {
+                from: mailConfig.fromEmail,
+                to: batchRecipients,
+              },
+            });
+
+            results.push({
+              messageId: info.messageId,
+              response: info.response,
+              recipientCount: batchRecipients.length,
+            });
+            sentRecipientCount += batchRecipients.length;
+          } catch (batchError) {
+            batchError.partialSend = {
+              sentBatchCount: results.length,
+              sentRecipientCount,
+              totalBatchCount: batches.length,
+              batchSize,
+            };
+            throw batchError;
+          }
+
+          if (index < batches.length - 1) {
+            await wait(BROADCAST_BATCH_PAUSE_MS);
+          }
+        }
+
+        const firstResult = results[0] || {};
+
+        return res.json({
+          ok: true,
+          messageId: firstResult.messageId,
+          response: firstResult.response,
+          recipientCount: recipients.length,
+          batchCount: batches.length,
+          batchSize,
+          mode: "broadcast",
+        });
+      }
+
+      const info = await transporter.sendMail({
+        ...message,
+        to: recipients[0],
       });
 
       res.json({
         ok: true,
         messageId: info.messageId,
         response: info.response,
+        recipientCount: recipients.length,
+        batchCount: 1,
+        batchSize: 1,
+        mode: "test",
       });
     } catch (error) {
       console.error("Error en /api/send-test:", error);
-      res.status(500).json({ ok: false, error: error.message });
+      res.status(500).json({
+        ok: false,
+        error: error.message,
+        ...(error.partialSend || {}),
+      });
     }
   });
 

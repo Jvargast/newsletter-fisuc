@@ -37,6 +37,7 @@
     var resetTimer = null;
     var isLocked = false;
     var lockedLabel = idleLabel;
+    var currentState = "idle";
 
     function clearTimer() {
       if (resetTimer) {
@@ -55,6 +56,7 @@
     function setState(nextState, label, autoResetMs) {
       ensureMarkup();
       clearTimer();
+      currentState = nextState;
 
       button.classList.remove("is-sending", "is-success", "is-error", "is-blocked");
       button.removeAttribute("aria-busy");
@@ -106,6 +108,19 @@
         isLocked = false;
         lockedLabel = idleLabel;
         setState("idle", label || idleLabel);
+      },
+      setIdleLabel: function (label) {
+        if (!label) return;
+        idleLabel = label;
+        button.dataset.idleLabel = idleLabel;
+
+        if (isLocked) {
+          lockedLabel = idleLabel;
+        }
+
+        if (currentState === "idle" && labelNode) {
+          labelNode.textContent = isLocked ? lockedLabel : idleLabel;
+        }
       },
     };
 

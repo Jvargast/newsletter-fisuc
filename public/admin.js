@@ -25,6 +25,10 @@ const FIELD_IDS = [
   "copyright",
   "test_to",
 ];
+const EMAIL_ADDRESS_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+const RECIPIENT_LIBRARY_STORAGE_KEY = "newsletter-fisuc-recipient-lists-v1";
+const DEFAULT_BROADCAST_BATCH_SIZE = 200;
+const BROADCAST_BATCH_SIZE_OPTIONS = [50, 100, 200, 250, 500];
 
 const TYPE_META = {
   story: {
@@ -278,6 +282,14 @@ const state = {
     providerKey: "",
     lastTestOk: false,
   },
+  delivery: {
+    recipients: [],
+    batchSize: DEFAULT_BROADCAST_BATCH_SIZE,
+  },
+  recipientLibrary: {
+    items: [],
+    selectedId: "",
+  },
 };
 
 function id(name) {
@@ -291,6 +303,750 @@ function getSendButtonUi() {
   return sendButtonUi;
 }
 
+function normalizeBroadcastBatchSize(value) {
+  const parsed = Number.parseInt(value, 10);
+  return BROADCAST_BATCH_SIZE_OPTIONS.includes(parsed)
+    ? parsed
+    : DEFAULT_BROADCAST_BATCH_SIZE;
+}
+
+function getTodayIsoDate() {
+  const now = new Date();
+  const offsetMs = now.getTimezoneOffset() * 60 * 1000;
+  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+}
+
+function pluralizeEs(count, singular, plural) {
+  return count === 1 ? singular : plural;
+}
+
+function batchSizeToScaleIndex(value) {
+  const normalized = normalizeBroadcastBatchSize(value);
+  const index = BROADCAST_BATCH_SIZE_OPTIONS.indexOf(normalized);
+  return index >= 0 ? index : BROADCAST_BATCH_SIZE_OPTIONS.indexOf(DEFAULT_BROADCAST_BATCH_SIZE);
+}
+
+function scaleIndexToBatchSize(value) {
+  const index = Number.parseInt(value, 10);
+  if (!Number.isFinite(index)) return DEFAULT_BROADCAST_BATCH_SIZE;
+  return (
+    BROADCAST_BATCH_SIZE_OPTIONS[
+      Math.min(Math.max(index, 0), BROADCAST_BATCH_SIZE_OPTIONS.length - 1)
+    ] || DEFAULT_BROADCAST_BATCH_SIZE
+  );
+}
+
+function getBroadcastBatchSize() {
+  const control = id("broadcast_batch_size");
+  if (control?.type === "range") {
+    return scaleIndexToBatchSize(control.value);
+  }
+
+  return normalizeBroadcastBatchSize(control?.value || state.delivery.batchSize);
+}
+
+function syncBroadcastBatchScale() {
+  document
+    .querySelectorAll("[data-broadcast-batch-size]")
+    .forEach((button) => {
+      button.classList.toggle(
+        "is-active",
+        Number.parseInt(button.dataset.broadcastBatchSize || "", 10) ===
+          state.delivery.batchSize
+      );
+    });
+}
+
+function setBroadcastBatchSize(value) {
+  state.delivery.batchSize = normalizeBroadcastBatchSize(value);
+  const control = id("broadcast_batch_size");
+  if (control) {
+    control.value =
+      control.type === "range"
+        ? String(batchSizeToScaleIndex(state.delivery.batchSize))
+        : String(state.delivery.batchSize);
+  }
+  syncBroadcastBatchScale();
+  refreshBroadcastMeta();
+}
+
+function estimateBroadcastBatchCount(count = state.delivery.recipients.length) {
+  if (!count) return 0;
+  return Math.ceil(count / Math.max(1, getBroadcastBatchSize()));
+}
+
+function defaultRecipientListName() {
+  return `Lista ${new Intl.DateTimeFormat("es-CL", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date())}`;
+}
+
+function formatRecipientLibraryStamp(value) {
+  try {
+    return new Intl.DateTimeFormat("es-CL", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(new Date(value));
+  } catch (_error) {
+    return "";
+  }
+}
+
+function normalizeRecipientLibraryItem(raw = {}, index = 0) {
+  const recipients = uniqueRecipientEmails(raw.recipients || []);
+  if (!recipients.length) return null;
+
+  const createdAt = raw.createdAt || new Date().toISOString();
+  const updatedAt = raw.updatedAt || createdAt;
+
+  return {
+    id: String(raw.id || `recipient-list-${Date.now()}-${index}`),
+    name: String(raw.name || "").trim() || `Lista ${index + 1}`,
+    recipients,
+    createdAt,
+    updatedAt,
+  };
+}
+
+function sortRecipientLibraryItems(items = []) {
+  return [...items].sort((left, right) => {
+    const leftTime = Date.parse(left.updatedAt || left.createdAt || 0) || 0;
+    const rightTime = Date.parse(right.updatedAt || right.createdAt || 0) || 0;
+    return rightTime - leftTime;
+  });
+}
+
+function setSavedRecipientListsHint(message = "") {
+  const hint = id("saved_broadcast_lists_hint");
+  if (!hint) return;
+  hint.textContent = message || "";
+}
+
+function renderRecipientLibrary() {
+  const select = id("saved_broadcast_lists");
+  if (!select) return;
+
+  const loadButton = id("load_broadcast_list_btn");
+  const appendButton = id("append_broadcast_list_btn");
+  const deleteButton = id("delete_broadcast_list_btn");
+
+  const items = sortRecipientLibraryItems(state.recipientLibrary.items);
+  state.recipientLibrary.items = items;
+
+  select.innerHTML = "";
+
+  if (!items.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No hay listas guardadas";
+    select.appendChild(option);
+    select.disabled = true;
+    state.recipientLibrary.selectedId = "";
+    if (loadButton) loadButton.disabled = true;
+    if (appendButton) appendButton.disabled = true;
+    if (deleteButton) deleteButton.disabled = true;
+    setSavedRecipientListsHint();
+    return;
+  }
+
+  const selectedId = items.some((item) => item.id === state.recipientLibrary.selectedId)
+    ? state.recipientLibrary.selectedId
+    : items[0].id;
+
+  state.recipientLibrary.selectedId = selectedId;
+  select.disabled = false;
+  if (loadButton) loadButton.disabled = false;
+  if (appendButton) appendButton.disabled = false;
+  if (deleteButton) deleteButton.disabled = false;
+
+  items.forEach((item) => {
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent = `${item.name} · ${item.recipients.length} ${pluralizeEs(
+      item.recipients.length,
+      "destinatario",
+      "destinatarios"
+    )}`;
+    select.appendChild(option);
+  });
+
+  select.value = selectedId;
+
+  const selected = items.find((item) => item.id === selectedId);
+  setSavedRecipientListsHint(
+    selected
+      ? `${selected.recipients.length} ${pluralizeEs(
+          selected.recipients.length,
+          "destinatario",
+          "destinatarios"
+        )} · ${formatRecipientLibraryStamp(selected.updatedAt)}`
+      : ""
+  );
+}
+
+function persistRecipientLibrary() {
+  try {
+    localStorage.setItem(
+      RECIPIENT_LIBRARY_STORAGE_KEY,
+      JSON.stringify(state.recipientLibrary.items)
+    );
+  } catch (error) {
+    console.warn("No se pudieron guardar las listas de destinatarios:", error);
+  }
+}
+
+function loadRecipientLibrary() {
+  try {
+    const raw = localStorage.getItem(RECIPIENT_LIBRARY_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    state.recipientLibrary.items = sortRecipientLibraryItems(
+      parsed
+        .map((item, index) => normalizeRecipientLibraryItem(item, index))
+        .filter(Boolean)
+    );
+  } catch (error) {
+    console.warn("No se pudieron cargar las listas de destinatarios:", error);
+    state.recipientLibrary.items = [];
+  }
+
+  renderRecipientLibrary();
+}
+
+function upsertRecipientLibraryItem(nextItem) {
+  const normalized = normalizeRecipientLibraryItem(nextItem);
+  if (!normalized) return null;
+
+  const existingIndex = state.recipientLibrary.items.findIndex(
+    (item) => item.id === normalized.id || item.name.toLowerCase() === normalized.name.toLowerCase()
+  );
+
+  if (existingIndex >= 0) {
+    const current = state.recipientLibrary.items[existingIndex];
+    state.recipientLibrary.items[existingIndex] = {
+      ...current,
+      ...normalized,
+      id: current.id,
+      createdAt: current.createdAt || normalized.createdAt,
+      updatedAt: new Date().toISOString(),
+    };
+    state.recipientLibrary.selectedId = current.id;
+  } else {
+    state.recipientLibrary.items.push(normalized);
+    state.recipientLibrary.selectedId = normalized.id;
+  }
+
+  persistRecipientLibrary();
+  renderRecipientLibrary();
+  return state.recipientLibrary.items.find(
+    (item) => item.id === state.recipientLibrary.selectedId
+  );
+}
+
+function syncSendActionOffset() {
+  const hint = id("send_availability_hint");
+  const wrap = hint?.closest(".send-action-wrap");
+  if (!hint || !wrap) return;
+
+  if (window.matchMedia("(max-width: 900px)").matches) {
+    wrap.style.setProperty("--send-action-offset", "0px");
+    return;
+  }
+
+  const wrapStyles = window.getComputedStyle(wrap);
+  const gap = Number.parseFloat(wrapStyles.rowGap || wrapStyles.gap || "0") || 0;
+  const hintHeight = Math.ceil(hint.getBoundingClientRect().height);
+  wrap.style.setProperty("--send-action-offset", `${gap + hintHeight}px`);
+}
+
+function scheduleSendActionOffsetSync() {
+  window.requestAnimationFrame(syncSendActionOffset);
+}
+
+function isBroadcastEnabled() {
+  return Boolean(id("broadcast_enabled")?.checked);
+}
+
+function setBroadcastEnabled(enabled) {
+  const checkbox = id("broadcast_enabled");
+  if (!checkbox) return;
+  checkbox.checked = Boolean(enabled);
+}
+
+function normalizeRecipientEmail(value = "") {
+  return String(value || "")
+    .trim()
+    .replace(/^<+|>+$/g, "")
+    .toLowerCase();
+}
+
+function isRecipientEmailValid(value = "") {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeRecipientEmail(value));
+}
+
+function extractRecipientEmails(raw = "") {
+  const text = String(raw || "");
+  const matches = text.match(EMAIL_ADDRESS_REGEX);
+  if (matches?.length) return matches;
+  return text.split(/[,\n;]+/g);
+}
+
+function uniqueRecipientEmails(list = []) {
+  const seen = new Set();
+  return list.reduce((acc, item) => {
+    const email = normalizeRecipientEmail(item);
+    if (!email || !isRecipientEmailValid(email) || seen.has(email)) return acc;
+    seen.add(email);
+    acc.push(email);
+    return acc;
+  }, []);
+}
+
+function mergeRecipientValues(values = [], seed = []) {
+  const next = uniqueRecipientEmails(seed);
+  const seen = new Set(next);
+  let addedCount = 0;
+  let invalidCount = 0;
+
+  values.forEach((value) => {
+    const email = normalizeRecipientEmail(value);
+    if (!email) return;
+    if (!isRecipientEmailValid(email)) {
+      invalidCount += 1;
+      return;
+    }
+    if (seen.has(email)) return;
+    seen.add(email);
+    next.push(email);
+    addedCount += 1;
+  });
+
+  return { recipients: next, addedCount, invalidCount };
+}
+
+function getBroadcastRecipients() {
+  return [...state.delivery.recipients];
+}
+
+function getSelectedRecipientList() {
+  return (
+    state.recipientLibrary.items.find(
+      (item) => item.id === state.recipientLibrary.selectedId
+    ) || null
+  );
+}
+
+function getSendActionLabel() {
+  return isBroadcastEnabled() ? "Enviar multidifusión" : "Enviar prueba";
+}
+
+function refreshBroadcastMeta() {
+  const recipientCount = state.delivery.recipients.length;
+  const batchSize = getBroadcastBatchSize();
+  const batchCount = estimateBroadcastBatchCount(recipientCount);
+  const batchLabel = pluralizeEs(batchCount, "lote", "lotes");
+  const recipientLabel = pluralizeEs(
+    batchSize,
+    "destinatario",
+    "destinatarios"
+  );
+
+  const hintNode = id("broadcast_batch_hint");
+
+  if (hintNode) {
+    hintNode.textContent = recipientCount
+      ? `${batchCount} ${batchLabel} de hasta ${batchSize} ${recipientLabel}.`
+      : `Hasta ${batchSize} ${recipientLabel} por lote.`;
+  }
+}
+
+function setBroadcastSummary(message = "", tone = "") {
+  const summary = id("broadcast_summary");
+  if (!summary) return;
+  summary.textContent = message;
+  if (tone) {
+    summary.dataset.tone = tone;
+  } else {
+    delete summary.dataset.tone;
+  }
+}
+
+function refreshBroadcastSummary(options = {}) {
+  const { addedCount = 0, invalidCount = 0, removed = false } = options;
+  const count = state.delivery.recipients.length;
+  const recipientLabel = pluralizeEs(count, "destinatario", "destinatarios");
+  const invalidLabel =
+    invalidCount === 1
+      ? "1 correo no se pudo reconocer."
+      : `${invalidCount} correos no se pudieron reconocer.`;
+
+  if (!count) {
+    setBroadcastSummary(
+      invalidCount
+        ? `${invalidLabel}`
+        : "Enter, coma o pegar lista.",
+      invalidCount ? "error" : ""
+    );
+    return;
+  }
+
+  if (invalidCount && addedCount) {
+    setBroadcastSummary(
+      `${addedCount} agregado(s) · ${invalidLabel}`,
+      "warning"
+    );
+    return;
+  }
+
+  if (invalidCount) {
+    setBroadcastSummary(
+      `${invalidLabel}`,
+      "error"
+    );
+    return;
+  }
+
+  if (removed) {
+    setBroadcastSummary(
+      `${count} ${recipientLabel} en la lista.`,
+      ""
+    );
+    return;
+  }
+
+  if (addedCount) {
+    setBroadcastSummary(
+      `${addedCount} agregado(s) · ${count} total.`,
+      ""
+    );
+    return;
+  }
+
+  setBroadcastSummary(
+    `${count} ${recipientLabel} en la lista.`,
+    ""
+  );
+}
+
+function renderBroadcastRecipients() {
+  const list = id("broadcast_recipient_list");
+  if (!list) return;
+
+  const recipients = getBroadcastRecipients();
+  if (!recipients.length) {
+    list.innerHTML =
+      '<div class="recipient-empty">La lista activa aparecerá aquí. Puedes agregar correos uno a uno o pegar una tanda completa.</div>';
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  recipients.forEach((email) => {
+    const chip = document.createElement("span");
+    chip.className = "recipient-chip";
+
+    const text = document.createElement("span");
+    text.className = "recipient-chip__text";
+    text.textContent = email;
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "recipient-chip__remove";
+    removeButton.dataset.removeRecipient = email;
+    removeButton.setAttribute("aria-label", `Quitar ${email}`);
+    removeButton.textContent = "×";
+
+    chip.append(text, removeButton);
+    fragment.appendChild(chip);
+  });
+
+  list.innerHTML = "";
+  list.appendChild(fragment);
+}
+
+function setBroadcastRecipients(list = [], options = {}) {
+  state.delivery.recipients = uniqueRecipientEmails(list);
+  renderBroadcastRecipients();
+  refreshBroadcastSummary(options);
+  refreshBroadcastMeta();
+}
+
+function addBroadcastRecipients(rawValues = []) {
+  const values = Array.isArray(rawValues) ? rawValues : [rawValues];
+  const { recipients, addedCount, invalidCount } = mergeRecipientValues(
+    values,
+    state.delivery.recipients
+  );
+
+  setBroadcastRecipients(recipients, { addedCount, invalidCount });
+  return { recipients, addedCount, invalidCount };
+}
+
+function replaceBroadcastRecipients(rawValues = []) {
+  const values = Array.isArray(rawValues) ? rawValues : [rawValues];
+  const { recipients, addedCount, invalidCount } = mergeRecipientValues(values);
+  setBroadcastRecipients(recipients, { addedCount, invalidCount });
+  return { recipients, addedCount, invalidCount };
+}
+
+function commitBroadcastInput() {
+  const input = id("broadcast_recipient_input");
+  if (!input) return { addedCount: 0, invalidCount: 0 };
+  const raw = input.value;
+  input.value = "";
+  return addBroadcastRecipients(extractRecipientEmails(raw));
+}
+
+function removeBroadcastRecipient(email) {
+  const target = normalizeRecipientEmail(email);
+  setBroadcastRecipients(
+    state.delivery.recipients.filter((item) => item !== target),
+    { removed: true }
+  );
+}
+
+function selectRecipientLibraryItem(value = "") {
+  state.recipientLibrary.selectedId = value;
+  renderRecipientLibrary();
+
+  const selected = getSelectedRecipientList();
+  const nameInput = id("broadcast_list_name");
+  if (nameInput && selected) {
+    nameInput.value = selected.name;
+  }
+}
+
+function toggleBroadcastImportPanel(forceOpen) {
+  const panel = id("broadcast_import_panel");
+  const button = id("toggle_broadcast_import_btn");
+  if (!panel) return;
+
+  const shouldOpen =
+    typeof forceOpen === "boolean" ? forceOpen : panel.hidden;
+
+  panel.hidden = !shouldOpen;
+  panel.classList.toggle("hidden", !shouldOpen);
+
+  if (button) {
+    button.classList.toggle("is-active", shouldOpen);
+    button.setAttribute("aria-pressed", String(shouldOpen));
+    const label = shouldOpen
+      ? "Ocultar pegado masivo"
+      : "Mostrar pegado masivo";
+    button.setAttribute("title", label);
+    button.setAttribute("aria-label", label);
+  }
+
+  if (shouldOpen) {
+    window.requestAnimationFrame(() => id("broadcast_bulk_input")?.focus());
+  }
+}
+
+function importBroadcastRecipients(mode = "replace") {
+  const textarea = id("broadcast_bulk_input");
+  const raw = textarea?.value || "";
+  if (!raw.trim()) {
+    setPreviewStatus("Pega una lista de correos antes de importarla.", "warn");
+    textarea?.focus();
+    return;
+  }
+
+  const extracted = extractRecipientEmails(raw);
+  const result =
+    mode === "append"
+      ? addBroadcastRecipients(extracted)
+      : replaceBroadcastRecipients(extracted);
+
+  if (!result.recipients.length) {
+    setPreviewStatus("No se reconocieron correos válidos en la lista.", "error");
+    return;
+  }
+
+  if (textarea) textarea.value = "";
+  toggleBroadcastImportPanel(false);
+  commit({ scheduleOnly: true });
+
+  setPreviewStatus(
+    mode === "append"
+      ? `Se agregaron ${result.addedCount} destinatario(s) desde la lista pegada.`
+      : `Se cargó una lista con ${result.recipients.length} destinatario(s).`,
+    "ok"
+  );
+}
+
+function saveCurrentBroadcastList() {
+  if (!state.delivery.recipients.length) {
+    setPreviewStatus("Agrega destinatarios antes de guardar una lista.", "warn");
+    return;
+  }
+
+  const nameInput = id("broadcast_list_name");
+  const selected = getSelectedRecipientList();
+  const typedName = nameInput?.value.trim();
+  const name = typedName || selected?.name || defaultRecipientListName();
+  const shouldUpdateSelected =
+    Boolean(selected) &&
+    (!typedName || typedName.toLowerCase() === selected.name.toLowerCase());
+
+  const saved = upsertRecipientLibraryItem({
+    id: shouldUpdateSelected ? selected.id : undefined,
+    name,
+    recipients: state.delivery.recipients,
+    createdAt: shouldUpdateSelected ? selected.createdAt : undefined,
+  });
+
+  if (nameInput && saved) {
+    nameInput.value = saved.name;
+  }
+
+  setPreviewStatus(
+    saved
+      ? `Lista "${saved.name}" guardada con ${saved.recipients.length} destinatario(s).`
+      : "No se pudo guardar la lista actual.",
+    saved ? "ok" : "error"
+  );
+}
+
+function applySelectedRecipientList(mode = "replace") {
+  const selected = getSelectedRecipientList();
+  if (!selected) {
+    setPreviewStatus("Selecciona una lista guardada primero.", "warn");
+    return;
+  }
+
+  const result =
+    mode === "append"
+      ? addBroadcastRecipients(selected.recipients)
+      : replaceBroadcastRecipients(selected.recipients);
+
+  const nameInput = id("broadcast_list_name");
+  if (nameInput) {
+    nameInput.value = selected.name;
+  }
+
+  commit({ scheduleOnly: true });
+
+  if (mode === "append") {
+    setPreviewStatus(
+      result.addedCount
+        ? `Se sumaron ${result.addedCount} destinatario(s) desde "${selected.name}".`
+        : `Todos los destinatarios de "${selected.name}" ya estaban en la lista actual.`,
+      result.addedCount ? "ok" : "warn"
+    );
+    return;
+  }
+
+  setPreviewStatus(
+    `Se cargó "${selected.name}" con ${result.recipients.length} destinatario(s).`,
+    "ok"
+  );
+}
+
+async function deleteSelectedRecipientList() {
+  const selected = getSelectedRecipientList();
+  if (!selected) {
+    setPreviewStatus("Selecciona una lista guardada para eliminar.", "warn");
+    return;
+  }
+
+  const accepted = await openConfirmModal({
+    title: "Eliminar lista guardada",
+    description: `Esta acción quitará "${selected.name}" de esta app en este equipo.`,
+    items: [`${selected.recipients.length} destinatario(s) guardados`],
+    confirmLabel: "Eliminar lista",
+  });
+
+  if (!accepted) return;
+
+  state.recipientLibrary.items = state.recipientLibrary.items.filter(
+    (item) => item.id !== selected.id
+  );
+  state.recipientLibrary.selectedId = "";
+  persistRecipientLibrary();
+  renderRecipientLibrary();
+
+  const nameInput = id("broadcast_list_name");
+  if (nameInput && nameInput.value.trim() === selected.name) {
+    nameInput.value = "";
+  }
+
+  setPreviewStatus(`Se eliminó la lista "${selected.name}".`, "ok");
+}
+
+function exportDeliveryState() {
+  return {
+    broadcastEnabled: isBroadcastEnabled(),
+    recipients: getBroadcastRecipients(),
+    batchSize: getBroadcastBatchSize(),
+  };
+}
+
+function applyDeliveryState(delivery = {}) {
+  setBroadcastEnabled(Boolean(delivery.broadcastEnabled));
+  setBroadcastBatchSize(delivery.batchSize);
+  setBroadcastRecipients(Array.isArray(delivery.recipients) ? delivery.recipients : []);
+  refreshDeliveryModeUi();
+}
+
+function refreshDeliveryModeUi() {
+  const broadcastEnabled = isBroadcastEnabled();
+  const singleField = id("test_to_field");
+  const broadcastPanel = id("broadcast_panel");
+  const testToInput = id("test_to");
+  const broadcastInput = id("broadcast_recipient_input");
+  const broadcastGeneralControls = [
+    "broadcast_batch_size",
+    "toggle_broadcast_import_btn",
+    "broadcast_import_replace_btn",
+    "broadcast_import_append_btn",
+    "save_broadcast_list_btn",
+    "broadcast_list_name",
+    "broadcast_bulk_input",
+    "clear_broadcast_btn",
+  ];
+  const sendUi = getSendButtonUi();
+  const sendLabel = getSendActionLabel();
+
+  if (singleField) {
+    singleField.hidden = broadcastEnabled;
+    singleField.classList.toggle("hidden", broadcastEnabled);
+  }
+
+  if (broadcastPanel) {
+    broadcastPanel.hidden = !broadcastEnabled;
+    broadcastPanel.classList.toggle("hidden", !broadcastEnabled);
+  }
+
+  if (testToInput) testToInput.disabled = broadcastEnabled;
+  if (broadcastInput) broadcastInput.disabled = !broadcastEnabled;
+  broadcastGeneralControls.forEach((controlId) => {
+    const control = id(controlId);
+    if (!control) return;
+    control.disabled = !broadcastEnabled;
+  });
+  document
+    .querySelectorAll("[data-broadcast-batch-size]")
+    .forEach((button) => {
+      button.disabled = !broadcastEnabled;
+    });
+
+  if (broadcastEnabled) {
+    renderRecipientLibrary();
+  } else {
+    ["saved_broadcast_lists", "load_broadcast_list_btn", "append_broadcast_list_btn", "delete_broadcast_list_btn"].forEach(
+      (controlId) => {
+        const control = id(controlId);
+        if (control) control.disabled = true;
+      }
+    );
+  }
+
+  sendUi?.setIdleLabel?.(sendLabel);
+  refreshSendAvailability();
+}
+
 function setSendAvailabilityHint(message = "", tone = "") {
   const hint = id("send_availability_hint");
   if (!hint) return;
@@ -300,32 +1056,36 @@ function setSendAvailabilityHint(message = "", tone = "") {
   } else {
     delete hint.dataset.tone;
   }
+  scheduleSendActionOffsetSync();
 }
 
 function refreshSendAvailability() {
   const sendUi = getSendButtonUi();
   if (!sendUi) return;
+  const label = getSendActionLabel();
+
+  sendUi.setIdleLabel?.(label);
 
   if (state.appConfig.loading) {
-    sendUi.lock("Enviar prueba");
+    sendUi.lock(label);
     setSendAvailabilityHint("Revisando envío...", "");
     return;
   }
 
   if (state.appConfig.loadError) {
-    sendUi.lock("Enviar prueba");
+    sendUi.lock(label);
     setSendAvailabilityHint(state.appConfig.loadError, "error");
     return;
   }
 
   if (!state.appConfig.loaded) {
-    sendUi.lock("Enviar prueba");
+    sendUi.lock(label);
     setSendAvailabilityHint("Revisando envío...", "");
     return;
   }
 
   if (!state.appConfig.isConfigured) {
-    sendUi.lock("Enviar prueba");
+    sendUi.lock(label);
     setSendAvailabilityHint(
       state.appConfig.canPersist
         ? "Configura el envío para habilitar esta acción."
@@ -335,7 +1095,7 @@ function refreshSendAvailability() {
     return;
   }
 
-  sendUi.unlock("Enviar prueba");
+  sendUi.unlock(label);
   setSendAvailabilityHint("");
 }
 
@@ -988,6 +1748,7 @@ function getFieldState() {
 function getDraft() {
   return {
     fields: getFieldState(),
+    delivery: exportDeliveryState(),
     cards: state.cards.map((card) => exportCard(card)),
   };
 }
@@ -1025,6 +1786,8 @@ function applyDraft(draft = {}, options = {}) {
   if (Array.isArray(draft.cards)) {
     state.cards = normalizeCards(draft.cards);
   }
+
+  applyDeliveryState(draft.delivery || {});
 
   syncColorInputs();
   refreshIssueHint();
@@ -1555,7 +2318,7 @@ function ensureConfigBeforeSend() {
 
   openConfigModal({ clearFeedback: false });
   setConfigFeedback(
-    "Completa y guarda la configuración antes de enviar una prueba.",
+    `Completa y guarda la configuración antes de ${getSendActionLabel().toLowerCase()}.`,
     "error"
   );
   refreshSendAvailability();
@@ -1920,7 +2683,7 @@ function renderBlock(card, index) {
             type="text"
             data-field="title"
             value="${escapeHtml(card.title)}"
-            placeholder="Ej. Rubisco Biotechnology avanza..."
+            placeholder="Ej. Título de la noticia"
           />
         </div>
 
@@ -1930,7 +2693,7 @@ function renderBlock(card, index) {
             type="text"
             data-field="source"
             value="${escapeHtml(card.source)}"
-            placeholder="Ej. Diario Financiero (DF LAB)"
+            placeholder="Ej. Fuente o categoría"
           />
         </div>
       </div>
@@ -1981,7 +2744,7 @@ function renderBlock(card, index) {
                 type="text"
                 data-field="caption"
                 value="${escapeHtml(card.caption)}"
-                placeholder="Texto común"
+                placeholder="Pie general"
               />
             </div>
           `
@@ -1994,7 +2757,7 @@ function renderBlock(card, index) {
           class="autosize"
           data-field="desc"
           rows="${textareaRows(card.desc, card.type === "note" ? 7 : 6)}"
-          placeholder="Pega o escribe el texto del bloque. Usa líneas en blanco para separar párrafos."
+          placeholder="Escribe aquí el contenido del bloque."
         >${escapeHtml(card.desc)}</textarea>
       </div>
     </article>
@@ -2687,6 +3450,11 @@ async function downloadHtml() {
 
 async function sendTest() {
   const sendUi = getSendButtonUi();
+  const broadcastEnabled = isBroadcastEnabled();
+  const recipients = getBroadcastRecipients();
+  const batchSize = getBroadcastBatchSize();
+  const batchCount = estimateBroadcastBatchCount(recipients.length);
+  const singleRecipient = valueOf("test_to").trim();
 
   try {
     if (!ensureConfigBeforeSend()) {
@@ -2699,33 +3467,93 @@ async function sendTest() {
       sendUi?.error("Revisa imágenes");
       setPreviewStatus("Corrige las imágenes SVG antes de enviar", "error");
       alert(
-        `Antes de enviar la prueba, reemplaza estas imágenes SVG por una versión PNG/JPG o vuelve a elegirlas desde la biblioteca para convertirlas:\n\n- ${svgIssues.join("\n- ")}`
+        `Antes de ${getSendActionLabel().toLowerCase()}, reemplaza estas imágenes SVG por una versión PNG/JPG o vuelve a elegirlas desde la biblioteca para convertirlas:\n\n- ${svgIssues.join("\n- ")}`
       );
       return;
     }
 
-    sendUi?.start("Enviando");
-    setPreviewStatus("Enviando prueba...", "ok");
-    const to = valueOf("test_to").trim();
-    const query = to ? `?to=${encodeURIComponent(to)}` : "";
+    if (broadcastEnabled && !recipients.length) {
+      sendUi?.error("Falta lista");
+      setPreviewStatus("Agrega destinatarios para la multidifusión", "warn");
+      alert("Agrega al menos un correo a la lista de multidifusión.");
+      id("broadcast_recipient_input")?.focus();
+      return;
+    }
 
-    const response = await fetch(`/api/send-test${query}`, {
+    sendUi?.start("Enviando");
+    setPreviewStatus(
+      broadcastEnabled
+        ? `Enviando multidifusión a ${recipients.length} destinatario(s) en ${batchCount} lote(s)...`
+        : "Enviando prueba...",
+      "ok"
+    );
+
+    const response = await fetch("/api/send-test", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(buildPayload()),
+      body: JSON.stringify({
+        ...buildPayload(),
+        delivery: broadcastEnabled
+          ? {
+              mode: "broadcast",
+              recipients,
+              batchSize,
+            }
+          : {
+              mode: "test",
+              to: singleRecipient,
+            },
+      }),
     });
 
     const out = await response.json();
-    if (!out.ok) throw new Error(out.error || "No se pudo enviar la prueba");
+    if (!out.ok) {
+      const partialMessage =
+        broadcastEnabled && out.sentRecipientCount
+          ? ` Se alcanzaron a enviar ${out.sentRecipientCount} destinatario(s) en ${out.sentBatchCount || 0} lote(s) antes del fallo.`
+          : "";
+      throw new Error(
+        (out.error ||
+          (broadcastEnabled
+            ? "No se pudo enviar la multidifusión"
+            : "No se pudo enviar la prueba")) + partialMessage
+      );
+    }
 
     sendUi?.success("Enviado");
+    if (broadcastEnabled) {
+      const deliveredCount = out.recipientCount || recipients.length;
+      const deliveredBatchCount = out.batchCount || batchCount;
+      setPreviewStatus(
+        `Multidifusión enviada a ${deliveredCount} destinatario(s) en ${deliveredBatchCount} lote(s)`,
+        "ok"
+      );
+      alert(
+        `Multidifusión enviada correctamente a ${
+          deliveredCount
+        } destinatario(s) en ${deliveredBatchCount} lote(s).\nMessage ID: ${out.messageId}`
+      );
+      return;
+    }
+
     setPreviewStatus(`Prueba enviada (${out.messageId})`, "ok");
     alert(`Correo enviado correctamente.\nMessage ID: ${out.messageId}`);
   } catch (error) {
     console.error(error);
     sendUi?.error("Reintentar");
-    setPreviewStatus(error.message || "Error al enviar la prueba", "error");
-    alert(error.message || "Error al enviar la prueba");
+    setPreviewStatus(
+      error.message ||
+        (broadcastEnabled
+          ? "Error al enviar la multidifusión"
+          : "Error al enviar la prueba"),
+      "error"
+    );
+    alert(
+      error.message ||
+        (broadcastEnabled
+          ? "Error al enviar la multidifusión"
+          : "Error al enviar la prueba")
+    );
   }
 }
 
@@ -3502,11 +4330,165 @@ function bindFormFields() {
   });
 }
 
+function bindDeliveryControls() {
+  const checkbox = id("broadcast_enabled");
+  const input = id("broadcast_recipient_input");
+  const list = id("broadcast_recipient_list");
+  const box = id("broadcast_recipient_box");
+  const batchSelect = id("broadcast_batch_size");
+  const batchScale = id("broadcast_batch_scale");
+  const toggleImportButton = id("toggle_broadcast_import_btn");
+  const importReplaceButton = id("broadcast_import_replace_btn");
+  const importAppendButton = id("broadcast_import_append_btn");
+  const saveListButton = id("save_broadcast_list_btn");
+  const savedListsSelect = id("saved_broadcast_lists");
+  const loadListButton = id("load_broadcast_list_btn");
+  const appendListButton = id("append_broadcast_list_btn");
+  const deleteListButton = id("delete_broadcast_list_btn");
+  const clearRecipientsButton = id("clear_broadcast_btn");
+
+  checkbox?.addEventListener("change", () => {
+    refreshDeliveryModeUi();
+    commit({ scheduleOnly: true });
+
+    if (checkbox.checked) {
+      window.requestAnimationFrame(() => input?.focus());
+    }
+  });
+
+  box?.addEventListener("click", () => {
+    if (!isBroadcastEnabled()) return;
+    input?.focus();
+  });
+
+  input?.addEventListener("keydown", (event) => {
+    if (["Enter", "Tab", ",", ";"].includes(event.key)) {
+      const currentValue = input.value.trim();
+      if (currentValue) {
+        event.preventDefault();
+        commitBroadcastInput();
+        commit({ scheduleOnly: true });
+      }
+      return;
+    }
+
+    if (event.key === "Backspace" && !input.value.trim()) {
+      const lastRecipient = state.delivery.recipients.at(-1);
+      if (!lastRecipient) return;
+      event.preventDefault();
+      removeBroadcastRecipient(lastRecipient);
+      commit({ scheduleOnly: true });
+    }
+  });
+
+  input?.addEventListener("input", () => {
+    if (/[,\n;]/.test(input.value)) {
+      commitBroadcastInput();
+      commit({ scheduleOnly: true });
+    }
+  });
+
+  input?.addEventListener("paste", (event) => {
+    const pasted = event.clipboardData?.getData("text") || "";
+    const extracted = extractRecipientEmails(pasted);
+    if (extracted.length <= 1 && !/[,;\n]/.test(pasted)) return;
+
+    event.preventDefault();
+    addBroadcastRecipients(extracted);
+    commit({ scheduleOnly: true });
+  });
+
+  input?.addEventListener("blur", () => {
+    if (!input.value.trim()) return;
+    commitBroadcastInput();
+    commit({ scheduleOnly: true });
+  });
+
+  list?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove-recipient]");
+    if (!button) return;
+    removeBroadcastRecipient(button.dataset.removeRecipient);
+    commit({ scheduleOnly: true });
+    input?.focus();
+  });
+
+  batchSelect?.addEventListener("input", () => {
+    setBroadcastBatchSize(scaleIndexToBatchSize(batchSelect.value));
+  });
+
+  batchSelect?.addEventListener("change", () => {
+    setBroadcastBatchSize(scaleIndexToBatchSize(batchSelect.value));
+    commit({ scheduleOnly: true });
+  });
+
+  batchScale?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-broadcast-batch-size]");
+    if (!button) return;
+    setBroadcastBatchSize(button.dataset.broadcastBatchSize);
+    commit({ scheduleOnly: true });
+  });
+
+  toggleImportButton?.addEventListener("click", () => {
+    toggleBroadcastImportPanel();
+  });
+
+  importReplaceButton?.addEventListener("click", () => {
+    importBroadcastRecipients("replace");
+  });
+
+  importAppendButton?.addEventListener("click", () => {
+    importBroadcastRecipients("append");
+  });
+
+  saveListButton?.addEventListener("click", () => {
+    saveCurrentBroadcastList();
+  });
+
+  savedListsSelect?.addEventListener("change", () => {
+    selectRecipientLibraryItem(savedListsSelect.value);
+  });
+
+  loadListButton?.addEventListener("click", () => {
+    applySelectedRecipientList("replace");
+  });
+
+  appendListButton?.addEventListener("click", () => {
+    applySelectedRecipientList("append");
+  });
+
+  deleteListButton?.addEventListener("click", () => {
+    deleteSelectedRecipientList();
+  });
+
+  clearRecipientsButton?.addEventListener("click", async () => {
+    if (!state.delivery.recipients.length) {
+      setPreviewStatus("La lista de multidifusión ya está vacía.", "warn");
+      return;
+    }
+
+    const accepted = await openConfirmModal({
+      title: "Vaciar lista actual",
+      description:
+        "Se quitarán los destinatarios cargados en esta multidifusión, pero las listas guardadas seguirán intactas.",
+      items: [`${state.delivery.recipients.length} destinatario(s) en la lista actual`],
+      confirmLabel: "Vaciar lista",
+    });
+
+    if (!accepted) return;
+
+    setBroadcastRecipients([]);
+    commit({ scheduleOnly: true });
+    setPreviewStatus("Se vació la lista actual de destinatarios.", "ok");
+  });
+}
+
 function bindPreviewControls() {
   getSendButtonUi();
+  scheduleSendActionOffsetSync();
   id("btnPreview")?.addEventListener("click", preview);
   id("btnDownload")?.addEventListener("click", downloadHtml);
   id("btnSend")?.addEventListener("click", sendTest);
+  window.addEventListener("resize", scheduleSendActionOffsetSync);
 
   id("view_toggle")?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-view]");
@@ -3729,6 +4711,7 @@ async function init() {
   bindColorPair("brand_gray_picker", "brand_gray");
 
   bindFormFields();
+  bindDeliveryControls();
   bindPreviewControls();
   bindBlockControls();
   bindAssetControls();
@@ -3738,13 +4721,21 @@ async function init() {
   bindImageSizeEditorControls();
   bindAdvancedControls();
   bindAccordionBehavior();
+  loadRecipientLibrary();
+  toggleBroadcastImportPanel(false);
 
   syncColorInputs();
+
+  const dateField = id("date");
+  if (dateField && !dateField.value) {
+    dateField.value = getTodayIsoDate();
+  }
 
   const defaultFields = getFieldState();
   const defaultCards = normalizeCards(readInitialCards());
   state.defaultDraft = {
     fields: defaultFields,
+    delivery: exportDeliveryState(),
     cards: defaultCards.map((card) => exportCard(card)),
   };
 

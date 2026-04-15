@@ -37,12 +37,12 @@
           <div class="grid-2 edit-grid">
             <div class="field">
               <label>Número</label>
-              <input id="issue" value="4" />
+              <input id="issue" value="1" />
             </div>
 
             <div class="field">
               <label>Fecha</label>
-              <input id="date" type="date" value="2026-04-12" />
+              <input id="date" type="date" value="" />
             </div>
           </div>
 
@@ -50,7 +50,7 @@
             <label>Asunto del correo</label>
             <input
               id="subject"
-              value="Avances de nuestro portafolio"
+              value="Asunto del boletín"
               placeholder="Lo que verá el destinatario en su bandeja"
             />
           </div>
@@ -59,7 +59,7 @@
             <label>Preheader</label>
             <input
               id="preheader"
-              value="Avances de nuestro portafolio"
+              value="Resumen breve de la edición"
               placeholder="Texto corto que acompaña al asunto"
             />
           </div>
@@ -190,12 +190,12 @@
         <div class="panel-body">
           <div class="field">
             <label>Título principal</label>
-            <input id="heading" value="Avances de nuestro portafolio" />
+            <input id="heading" value="Título principal" />
           </div>
 
           <div class="field">
             <label>Bajada / introducción</label>
-            <textarea id="subheading" rows="5">Durante este período, las startups del portafolio de FISUC continúan avanzando en sus procesos de validación comercial y escalamiento, a través de alianzas estratégicas, levantamiento de capital e integración con actores relevantes a nivel global.</textarea>
+            <textarea id="subheading" rows="5">Escribe aquí una breve introducción para presentar esta edición del newsletter.</textarea>
           </div>
         </div>
       </details>
@@ -283,13 +283,254 @@
             />
           </div>
 
-          <div class="field">
+          <div class="field" id="test_to_field">
             <label>Correo destino para prueba</label>
             <input
               id="test_to"
               value=""
               placeholder="correo@dominio.com"
             />
+          </div>
+
+          <div class="field">
+            <label class="delivery-toggle" for="broadcast_enabled">
+              <input id="broadcast_enabled" type="checkbox" />
+              <span>Habilitar multidifusión</span>
+            </label>
+            <small class="field-help">
+              Envía el mismo correo a varios destinatarios usando copia oculta
+              para no exponer la lista entre ellos.
+            </small>
+          </div>
+
+          <div class="field recipients-field hidden" id="broadcast_panel" hidden>
+            <div class="broadcast-shell">
+              <div class="broadcast-card">
+                <div class="broadcast-header">
+                  <div class="broadcast-header__copy">
+                    <label for="broadcast_recipient_input">Destinatarios</label>
+                  </div>
+
+                  <div class="broadcast-header__actions">
+                    <button
+                      type="button"
+                      class="btn broadcast-icon-btn broadcast-icon-btn--soft"
+                      id="toggle_broadcast_import_btn"
+                      title="Mostrar pegado masivo"
+                      aria-label="Mostrar pegado masivo"
+                      aria-pressed="false"
+                    >
+                      <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+                        <path d="M6 3.75h6.5A1.75 1.75 0 0 1 14.25 5.5v9A1.75 1.75 0 0 1 12.5 16.25H6A1.75 1.75 0 0 1 4.25 14.5v-9A1.75 1.75 0 0 1 6 3.75Z" />
+                        <path d="M8 2.75h2.75" />
+                        <path d="M10 8.5v4.25" />
+                        <path d="m8.25 11 1.75 1.75L11.75 11" />
+                      </svg>
+                      <span class="sr-only">Mostrar pegado masivo</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn broadcast-icon-btn broadcast-icon-btn--ghost"
+                      id="clear_broadcast_btn"
+                      title="Limpiar destinatarios"
+                      aria-label="Limpiar destinatarios"
+                    >
+                      <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+                        <path d="M5.75 6.5h8.5" />
+                        <path d="M8 6.5V5.25A1.25 1.25 0 0 1 9.25 4h1.5A1.25 1.25 0 0 1 12 5.25V6.5" />
+                        <path d="M7 8.5v5.25" />
+                        <path d="M10 8.5v5.25" />
+                        <path d="M13 8.5v5.25" />
+                        <path d="M6.5 6.5l.6 9.2A1.5 1.5 0 0 0 8.6 17h2.8a1.5 1.5 0 0 0 1.5-1.3l.6-9.2" />
+                      </svg>
+                      <span class="sr-only">Limpiar destinatarios</span>
+                    </button>
+                  </div>
+                </div>
+
+                <section
+                  class="broadcast-import hidden"
+                  id="broadcast_import_panel"
+                  hidden
+                >
+                  <div
+                    class="broadcast-import__label"
+                    aria-hidden="true"
+                  >
+                    Pegado masivo
+                  </div>
+                  <textarea
+                    id="broadcast_bulk_input"
+                    rows="5"
+                    placeholder="Pega correos separados por comas, punto y coma o saltos de línea"
+                  ></textarea>
+                  <div class="broadcast-import__actions">
+                    <button
+                      type="button"
+                      class="btn broadcast-icon-btn broadcast-icon-btn--accent"
+                      id="broadcast_import_replace_btn"
+                      title="Reemplazar con la lista pegada"
+                      aria-label="Reemplazar con la lista pegada"
+                    >
+                      <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+                        <path d="M5 6.25h7.5" />
+                        <path d="m10 3.75 2.5 2.5L10 8.75" />
+                        <path d="M15 13.75H7.5" />
+                        <path d="m10 11.25-2.5 2.5 2.5 2.5" />
+                      </svg>
+                      <span class="sr-only">Reemplazar con la lista pegada</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn broadcast-icon-btn broadcast-icon-btn--soft"
+                      id="broadcast_import_append_btn"
+                      title="Agregar la lista pegada"
+                      aria-label="Agregar la lista pegada"
+                    >
+                      <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+                        <path d="M10 4.5v11" />
+                        <path d="M4.5 10h11" />
+                      </svg>
+                      <span class="sr-only">Agregar la lista pegada</span>
+                    </button>
+                  </div>
+                </section>
+
+                <section class="broadcast-list">
+                  <div class="recipients-field__box" id="broadcast_recipient_box">
+                    <div
+                      class="recipients-field__list"
+                      id="broadcast_recipient_list"
+                    ></div>
+                    <input
+                      id="broadcast_recipient_input"
+                      class="recipients-field__input"
+                      value=""
+                      placeholder="Agregar correo y presionar Enter"
+                      autocomplete="off"
+                      autocapitalize="off"
+                      spellcheck="false"
+                    />
+                    <small
+                      id="broadcast_summary"
+                      class="field-help broadcast-summary"
+                      aria-live="polite"
+                    >
+                      Enter, coma o pegar lista.
+                    </small>
+                  </div>
+                </section>
+
+                <section class="broadcast-settings">
+                  <div class="broadcast-settings__split">
+                    <div class="field broadcast-settings__field broadcast-settings__field--card">
+                      <label for="broadcast_list_name">Lista</label>
+                      <input
+                        id="broadcast_list_name"
+                        placeholder="Nombre interno"
+                      />
+                    </div>
+
+                    <div class="field broadcast-settings__field broadcast-settings__field--card">
+                      <label for="broadcast_batch_size">Lote</label>
+                      <input
+                        id="broadcast_batch_size"
+                        type="hidden"
+                        value="200"
+                      />
+                      <div class="broadcast-segmented" id="broadcast_batch_scale">
+                        <button type="button" class="broadcast-segmented__option" data-broadcast-batch-size="50">50</button>
+                        <button type="button" class="broadcast-segmented__option" data-broadcast-batch-size="100">100</button>
+                        <button type="button" class="broadcast-segmented__option is-active" data-broadcast-batch-size="200">200</button>
+                        <button type="button" class="broadcast-segmented__option" data-broadcast-batch-size="250">250</button>
+                        <button type="button" class="broadcast-segmented__option" data-broadcast-batch-size="500">500</button>
+                      </div>
+                      <small
+                        id="broadcast_batch_hint"
+                        class="field-help broadcast-batch-hint"
+                        aria-live="polite"
+                      >
+                        Envío por lotes.
+                      </small>
+                    </div>
+                  </div>
+
+                  <div class="field broadcast-settings__field broadcast-settings__field--saved broadcast-settings__field--card">
+                    <div class="broadcast-settings__row">
+                      <label for="saved_broadcast_lists">Listas guardadas</label>
+                      <div class="broadcast-saved__actions">
+                        <button
+                          type="button"
+                          class="btn broadcast-icon-btn broadcast-icon-btn--accent"
+                          id="save_broadcast_list_btn"
+                          title="Guardar lista actual"
+                          aria-label="Guardar lista actual"
+                        >
+                          <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+                            <path d="M5 4.75h8.5l1.75 1.75v8.75A1.75 1.75 0 0 1 13.5 17h-7A1.75 1.75 0 0 1 4.75 15.25v-8.75A1.75 1.75 0 0 1 6.5 4.75Z" />
+                            <path d="M7.25 4.75v4h5.5v-4" />
+                            <path d="M7.5 13.25h5" />
+                          </svg>
+                          <span class="sr-only">Guardar lista actual</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="btn broadcast-icon-btn broadcast-icon-btn--soft"
+                          id="load_broadcast_list_btn"
+                          title="Cargar lista"
+                          aria-label="Cargar lista"
+                        >
+                          <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+                            <path d="M10 4.5v7" />
+                            <path d="m7.25 8.75 2.75 2.75 2.75-2.75" />
+                            <path d="M5.25 14.5h9.5" />
+                          </svg>
+                          <span class="sr-only">Cargar lista</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="btn broadcast-icon-btn broadcast-icon-btn--soft"
+                          id="append_broadcast_list_btn"
+                          title="Sumar lista"
+                          aria-label="Sumar lista"
+                        >
+                          <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+                            <path d="M10 4.5v11" />
+                            <path d="M4.5 10h11" />
+                          </svg>
+                          <span class="sr-only">Sumar lista</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="btn broadcast-icon-btn broadcast-icon-btn--ghost"
+                          id="delete_broadcast_list_btn"
+                          title="Eliminar lista"
+                          aria-label="Eliminar lista"
+                        >
+                          <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-svg">
+                            <path d="M5.75 6.5h8.5" />
+                            <path d="M8 6.5V5.25A1.25 1.25 0 0 1 9.25 4h1.5A1.25 1.25 0 0 1 12 5.25V6.5" />
+                            <path d="M7 8.5v5.25" />
+                            <path d="M10 8.5v5.25" />
+                            <path d="M13 8.5v5.25" />
+                            <path d="M6.5 6.5l.6 9.2A1.5 1.5 0 0 0 8.6 17h2.8a1.5 1.5 0 0 0 1.5-1.3l.6-9.2" />
+                          </svg>
+                          <span class="sr-only">Eliminar lista</span>
+                        </button>
+                      </div>
+                    </div>
+                    <select id="saved_broadcast_lists">
+                      <option value="">No hay listas guardadas</option>
+                    </select>
+                    <small
+                      id="saved_broadcast_lists_hint"
+                      class="field-help"
+                      aria-live="polite"
+                    ></small>
+                  </div>
+                </section>
+              </div>
+            </div>
           </div>
         </div>
       </details>
@@ -351,12 +592,12 @@
       <section class="preview-summary">
         <div class="summary-chip">
           <span>Asunto</span>
-          <strong id="summary_subject">Avances de nuestro portafolio</strong>
+          <strong id="summary_subject">Asunto del boletín</strong>
         </div>
 
         <div class="summary-chip">
           <span>Preheader</span>
-          <strong id="summary_preheader">Avances de nuestro portafolio</strong>
+          <strong id="summary_preheader">Resumen breve de la edición</strong>
         </div>
 
         <div class="summary-chip summary-chip--status">
@@ -772,26 +1013,27 @@
       [
         {
           "type": "story",
-          "title": "Rubisco Biotechnology avanza en su escalamiento junto a Terraflos",
-          "source": "Diario Financiero (DF LAB)",
-          "desc": "Rubisco Biotechnology, parte del portafolio de FISUC, cerró una ronda de financiamiento por US$2 millones, de los cuales Terraflos aportó US$1,5 millones.\n\nLa operación contempla, además, un proceso de adquisición progresiva de la compañía por parte de Terraflos y refuerza la expansión internacional de la startup.",
+          "title": "Título de noticia destacada",
+          "source": "Fuente o categoría",
+          "desc": "Escribe aquí un resumen breve de la noticia.\n\nAgrega contexto, enlace o un cierre si hace falta.",
           "image": ""
         },
         {
           "type": "story",
-          "title": "Bluetek Global concreta inversión estratégica con AbastibleTec",
-          "source": "Diario Financiero (DF LAB)",
-          "desc": "Bluetek Global anunció la incorporación de AbastibleTec como inversionista estratégico, con un aporte de US$500 mil para impulsar su escalamiento.\n\nEl acuerdo contempla nuevos proyectos, expansión comercial y fortalecimiento de capacidades para acelerar su despliegue en distintos mercados."
+          "title": "Segundo bloque de contenido",
+          "source": "Fuente o categoría",
+          "desc": "Usa este espacio para una segunda noticia, anuncio o actualización breve.",
+          "image": ""
         },
         {
           "type": "gallery",
-          "title": "Startups FISUC destacadas en el ecosistema",
-          "source": "Cobertura y actividades recientes",
-          "desc": "Usa este bloque cuando quieras acompañar una nota con dos imágenes en paralelo o una mini galería.",
+          "title": "Galería o registro visual",
+          "source": "Actividad o cobertura",
+          "desc": "Usa este bloque para mostrar dos imágenes relacionadas con una misma actividad o anuncio.",
           "images": ["", ""],
           "imageCaptions": [
-            "Texto imagen 1",
-            "Texto imagen 2"
+            "Pie imagen 1",
+            "Pie imagen 2"
           ],
           "imageCaptionAligns": ["left", "center"]
         }
