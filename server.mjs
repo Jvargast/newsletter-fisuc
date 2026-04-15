@@ -19,6 +19,22 @@ const DEFAULT_BROADCAST_BATCH_SIZE = 200;
 const MAX_BROADCAST_BATCH_SIZE = 500;
 const BROADCAST_BATCH_PAUSE_MS = 2200;
 
+function readAppMeta(rootDir = MODULE_DIR) {
+  try {
+    const packagePath = path.join(rootDir, "package.json");
+    const raw = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+    return {
+      name: String(raw.productName || raw.name || "FISUC Newsletter"),
+      version: String(raw.version || ""),
+    };
+  } catch (_error) {
+    return {
+      name: "FISUC Newsletter",
+      version: "",
+    };
+  }
+}
+
 function toCleanString(value = "") {
   return sanitizeHeaderText(String(value ?? ""));
 }
@@ -401,6 +417,7 @@ export function createNewsletterApp(options = {}) {
     options.uploadsDir || path.join(rootDir, "public", "uploads");
   const templatesDir = path.join(rootDir, "templates");
   const configStore = createConfigStore(options.configPath || null);
+  const appMeta = readAppMeta(rootDir);
 
   loadEnvironment(rootDir, options.envPath);
   fs.mkdirSync(uploadsDir, { recursive: true });
@@ -421,6 +438,7 @@ export function createNewsletterApp(options = {}) {
 
     res.json({
       ok: true,
+      app: appMeta,
       mode: resolved.canPersist ? "desktop" : "web",
       canPersist: resolved.canPersist,
       source: resolved.source,

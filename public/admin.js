@@ -282,6 +282,10 @@ const state = {
     providerKey: "",
     lastTestOk: false,
   },
+  appMeta: {
+    name: "FISUC Newsletter",
+    version: "1.1.0",
+  },
   delivery: {
     recipients: [],
     batchSize: DEFAULT_BROADCAST_BATCH_SIZE,
@@ -2161,6 +2165,19 @@ function refreshConfigEntryPoint() {
   button.classList.toggle("subtle", !state.appConfig.loaded || state.appConfig.isConfigured);
 }
 
+function refreshAppFooter() {
+  const nameNode = id("app_footer_name");
+  const versionNode = id("app_footer_version");
+  if (nameNode) {
+    nameNode.textContent = state.appMeta.name || "FISUC Newsletter";
+  }
+  if (versionNode) {
+    versionNode.textContent = state.appMeta.version
+      ? `v${state.appMeta.version}`
+      : "";
+  }
+}
+
 function applyLoadedConfig(data = {}) {
   state.appConfig = {
     ...state.appConfig,
@@ -2175,6 +2192,11 @@ function applyLoadedConfig(data = {}) {
     lastTestOk: Boolean(data.isConfigured),
   };
 
+  state.appMeta = {
+    name: String(data.app?.name || state.appMeta.name || "FISUC Newsletter"),
+    version: String(data.app?.version || state.appMeta.version || ""),
+  };
+
   populateConfigForm(state.appConfig.values);
 
   if (!valueOf("test_to").trim() && state.appConfig.values?.testTo) {
@@ -2182,6 +2204,7 @@ function applyLoadedConfig(data = {}) {
   }
 
   refreshConfigEntryPoint();
+  refreshAppFooter();
   refreshConfigWizard();
   refreshSendAvailability();
 }
@@ -4725,6 +4748,7 @@ async function init() {
   toggleBroadcastImportPanel(false);
 
   syncColorInputs();
+  refreshAppFooter();
 
   const dateField = id("date");
   if (dateField && !dateField.value) {

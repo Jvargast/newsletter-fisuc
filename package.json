@@ -1,7 +1,7 @@
 {
   "name": "newsletter-fisuc",
   "productName": "FISUC Newsletter",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Editor visual local para crear, previsualizar y enviar newsletters HTML de FISUC.",
   "main": "electron/main.cjs",
   "scripts": {
@@ -9,7 +9,9 @@
     "dev:watch": "nodemon server.mjs",
     "desktop:dev": "electron-forge start",
     "desktop:package": "electron-forge package",
-    "desktop:make": "electron-forge make"
+    "desktop:make": "electron-forge make",
+    "desktop:package:mac": "electron-forge package --platform=darwin",
+    "desktop:make:mac": "electron-forge make --platform=darwin"
   },
   "keywords": [
     "newsletter",
@@ -34,6 +36,7 @@
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.8.1",
+    "@electron-forge/maker-dmg": "^7.8.1",
     "@electron-forge/maker-zip": "^7.8.1",
     "electron": "^37.2.0"
   }

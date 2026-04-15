@@ -11,6 +11,21 @@ function getAppRoot() {
   return path.join(__dirname, "..");
 }
 
+function getPackageMeta() {
+  try {
+    return require(path.join(getAppRoot(), "package.json"));
+  } catch (_error) {
+    return { productName: "FISUC Newsletter", version: "" };
+  }
+}
+
+function resolveAppIcon(rootDir) {
+  return resolveExistingPath([
+    path.join(rootDir, "public", "app-icon.png"),
+    path.join(rootDir, "public", "app-icon.icns"),
+  ]);
+}
+
 function resolveExistingPath(candidates) {
   return candidates.find((candidate) => candidate && fs.existsSync(candidate)) || null;
 }
@@ -61,6 +76,9 @@ async function ensureServer() {
 async function createMainWindow() {
   const server = await ensureServer();
   const allowedOrigin = new URL(server.url).origin;
+  const rootDir = getAppRoot();
+  const packageMeta = getPackageMeta();
+  const appIcon = resolveAppIcon(rootDir);
 
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.focus();
@@ -73,9 +91,10 @@ async function createMainWindow() {
     minWidth: 1220,
     minHeight: 760,
     autoHideMenuBar: true,
-    title: "FISUC Newsletter",
+    title: packageMeta.productName || "FISUC Newsletter",
     backgroundColor: "#eef5f1",
     show: false,
+    icon: appIcon || undefined,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -135,7 +154,11 @@ if (!gotSingleInstanceLock) {
 
   app.whenReady().then(async () => {
     try {
+      const appIcon = resolveAppIcon(getAppRoot());
       app.setAppUserModelId("cl.fisuc.newsletter");
+      if (process.platform === "darwin" && appIcon && app.dock) {
+        app.dock.setIcon(appIcon);
+      }
       await createMainWindow();
     } catch (error) {
       console.error(error);
