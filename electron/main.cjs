@@ -20,9 +20,16 @@ function getPackageMeta() {
 }
 
 function resolveAppIcon(rootDir) {
+  if (app.isPackaged) {
+    return resolveExistingPath([
+      path.join(process.resourcesPath, "app.asar", "public", "app.png"),
+      path.join(process.resourcesPath, "app.png"),
+    ]);
+  }
+
   return resolveExistingPath([
-    path.join(rootDir, "public", "app-icon.png"),
-    path.join(rootDir, "public", "app-icon.icns"),
+    path.join(rootDir, "public", "app.png"),
+    path.join(rootDir, "public", "app.icns"),
   ]);
 }
 
@@ -94,7 +101,7 @@ async function createMainWindow() {
     title: packageMeta.productName || "FISUC Newsletter",
     backgroundColor: "#eef5f1",
     show: false,
-    icon: appIcon || undefined,
+    icon: process.platform === "darwin" ? undefined : appIcon || undefined,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -156,7 +163,7 @@ if (!gotSingleInstanceLock) {
     try {
       const appIcon = resolveAppIcon(getAppRoot());
       app.setAppUserModelId("cl.fisuc.newsletter");
-      if (process.platform === "darwin" && appIcon && app.dock) {
+      if (process.platform === "darwin" && !app.isPackaged && appIcon && app.dock) {
         app.dock.setIcon(appIcon);
       }
       await createMainWindow();

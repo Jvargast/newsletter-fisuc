@@ -6,11 +6,11 @@
   "brand": {
     "name": "FISUC",
     "logo": "https://via.placeholder.com/180x48?text=FISUC",
-    "primary": "#0176DE",
+    "primary": "#1A75EB",
     "bg": "#FFFFFF",
-    "text": "#111827",
-    "gray": "#54565A",
-    "dark": "#111827"
+    "text": "#101826",
+    "gray": "#5A697C",
+    "dark": "#101826"
   },
   "unsubscribe": "%%unsubscribe_link%%",
   "edition": {

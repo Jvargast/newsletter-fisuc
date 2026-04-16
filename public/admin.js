@@ -2169,7 +2169,7 @@ function refreshAppFooter() {
   const nameNode = id("app_footer_name");
   const versionNode = id("app_footer_version");
   if (nameNode) {
-    nameNode.textContent = state.appMeta.name || "FISUC Newsletter";
+    nameNode.textContent = state.appMeta.name || "Newsletter";
   }
   if (versionNode) {
     versionNode.textContent = state.appMeta.version
@@ -2193,7 +2193,7 @@ function applyLoadedConfig(data = {}) {
   };
 
   state.appMeta = {
-    name: String(data.app?.name || state.appMeta.name || "FISUC Newsletter"),
+    name: String(data.app?.name || state.appMeta.name || "Newsletter"),
     version: String(data.app?.version || state.appMeta.version || ""),
   };
 
@@ -3370,7 +3370,7 @@ function buildPayload() {
       bg: valueOf("brand_bg"),
       text: valueOf("brand_text"),
       gray: valueOf("brand_gray"),
-      dark: "#111827",
+      dark: "#101826",
     },
     unsubscribe: valueOf("unsubscribe"),
     edition: {

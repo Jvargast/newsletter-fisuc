@@ -16,7 +16,7 @@ try {
   });
 } catch (_error) {}
 
-const iconBase = path.join(__dirname, "public", "app-icon");
+const iconBase = path.join(__dirname, "public", "app");
 const hasPackagedIcon = [".icns", ".ico", ".png"].some((extension) =>
   fs.existsSync(`${iconBase}${extension}`)
 );
@@ -25,7 +25,21 @@ module.exports = {
   packagerConfig: {
     asar: true,
     executableName: "fisuc-newsletter",
-    ignore: [/^\/\.npm-cache/, /^\/\.npm-prefix/, /^\/out/, /^\/dist/],
+    ignore: [
+      /^\/\.npm-cache/,
+      /^\/\.npm-prefix/,
+      /^\/out/,
+      /^\/dist/,
+      /^\/build/,
+      /^\/bin/,
+      /^\/scripts/,
+      /^\/data/,
+      /^\/README\.TXT$/,
+      /^\/Start\.command$/,
+      /^\/Start\.bat$/,
+      /^\/\.DS_Store$/,
+      /^\/\.env\.sample$/,
+    ],
     ...(hasPackagedIcon ? { icon: iconBase } : {}),
   },
   makers,
